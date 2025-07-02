@@ -83,6 +83,79 @@ cd Internet-Scanners-OSINT-Tool
 The tool will automatically clone or update the upstream data repository:
 
 > [MDMCK10/internet-scanners](https://github.com/MDMCK10/internet-scanners)
+ 
+
+
+## Python installation
+
+To install all required Python dependencies, run:
+
+```
+
+pip install -r requirements.txt
+
+```
+
+This tool depends on the following main Python packages:
+
+- `requests` → for HTTP requests to services like AbuseIPDB
+- `ipwhois` → for ASN and network enrichment
+
+These are specified in `requirements.txt`:
+
+```
+
+requests>=2.25.1
+ipwhois>=1.2.0
+
+```
+
+
+
+### Tkinter (GUI Usage) Installation and Verification (Linux)
+
+The graphical user interface (GUI) uses **Tkinter** for Python.
+
+On many Linux distributions, Tkinter is not installed by default, especially on minimal or server installations.
+
+To install it on Ubuntu:
+
+```
+
+sudo apt update
+sudo apt install python3-tk
+
+```
+
+To verify if Tkinter is installed correctly:
+
+```
+
+python3 -c "import tkinter; print(tkinter.TkVersion)"
+
+```
+
+If installed, you should see a version number such as:
+
+```
+
+8.6
+
+```
+
+If you receive an error like:
+
+```
+
+ModuleNotFoundError: No module named 'tkinter'
+
+```
+
+→ It means Tkinter is missing and needs to be installed.
+
+If you are working on a headless server without a graphical environment, you can still use the CLI version of this tool without Tkinter.
+
+ 
 
 ---
 
@@ -144,7 +217,7 @@ python3 gui\_scanner.py
 
 ### Screenshot
 
-*(Replace with your own screenshot)*
+ 
 
 ![GUI Screenshot](docs/screenshot_gui.png)
 

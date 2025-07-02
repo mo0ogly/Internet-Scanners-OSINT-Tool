@@ -73,7 +73,6 @@ from tkinter import scrolledtext, ttk, messagebox, filedialog, font
 import threading
 import queue
 import logging
-import sys
 from typing import List, Dict, Any
 from datetime import datetime
 import os
