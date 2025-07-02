@@ -84,6 +84,7 @@ from internet_scanner import InternetScannerExtractor
 class GuiLogger(logging.Handler):
     """
     Custom logging handler for Tkinter Text widget.
+    
     """
 
     def __init__(self, text_widget: tk.Text):
