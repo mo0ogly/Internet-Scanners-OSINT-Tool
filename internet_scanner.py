@@ -82,6 +82,12 @@ class InternetScannerExtractor:
         self.logger = self._setup_logger(log_level)
 
     def _setup_logger(self, level: int) -> logging.Logger:
+        
+
+        logs_dir = "logs"
+        os.makedirs(logs_dir, exist_ok=True)
+        log_path = os.path.join(logs_dir, "scanner.log")
+
         logger = logging.getLogger("InternetScannerExtractor")
         logger.setLevel(level)
 
@@ -90,7 +96,7 @@ class InternetScannerExtractor:
             datefmt="%Y-%m-%d %H:%M:%S"
         )
 
-        fh = logging.FileHandler("scanner.log", encoding="utf-8")
+        fh = logging.FileHandler(log_path, encoding="utf-8")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
 
@@ -99,6 +105,7 @@ class InternetScannerExtractor:
         logger.addHandler(ch)
 
         return logger
+
 
     def git_clone_or_pull(self) -> None:
         if os.path.exists(self.repo_path):
