@@ -1,3 +1,6 @@
 {
-    "abuseipdb_api_key": "ADD-YOUR-YEY"
+    "viewdns_api_key": "YOUR_VIEWDNS_API_KEY",
+    "domaintools_api_user": "YOUR_DOMAINTOOLS_USERNAME",
+    "domaintools_api_key": "YOUR_DOMAINTOOLS_API_KEY",
+    "whoisxml_api_key": "YOUR_WHOISXML_API_KEY"
 }

@@ -99,11 +99,11 @@ import logging
 import sys
 import argparse
 import time
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional 
 from datetime import datetime
 import requests
-from ipwhois import IPWhois
-from ipwhois.exceptions import IPDefinedError
+ 
+ 
 import dns.resolver
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -122,6 +122,7 @@ class ReverseMXLookup:
         multithread: bool = True,
         export_csv: Optional[str] = None
     ):
+        
         self.mode = mode
         self.target = target
         self.provider = provider
@@ -129,6 +130,7 @@ class ReverseMXLookup:
         self.multithread = multithread
         self.export_csv = export_csv
         self.logger = self._setup_logger()
+        self.api_keys = self.load_api_keys()
 
     def _setup_logger(self) -> logging.Logger:
         logger = logging.getLogger("ReverseMXLookup")
@@ -169,12 +171,12 @@ class ReverseMXLookup:
 
         # Validate mode
         if self.mode not in ["mx_lookup", "reverse_mx"]:
-            self.logger.error(f"❌ Unknown mode: {self.mode}. Must be either 'mx_lookup' or 'reverse_mx'.")
+            self.logger.error(f"🛑 Unknown mode: {self.mode}. Must be either 'mx_lookup' or 'reverse_mx'.")
             return []
 
         # Validate target presence
         if not self.target:
-            self.logger.error("❌ No target specified. Exiting run.")
+            self.logger.error("🛑 No target specified. Exiting run.")
             return []
 
         # Multi-threaded execution
@@ -318,74 +320,125 @@ class ReverseMXLookup:
             self.logger.info(f"MX lookup complete for {domain}. No records found.")
 
         return result
-
+    
     def reverse_mx_lookup(self, mx_host: str, provider: str) -> List[Dict[str, str]]:
         """
-        Perform a reverse MX lookup using public services like ViewDNS,
-        DomainTools or WhoisXML. This method returns all domains found 
-        sharing the same MX host.
+        Perform a reverse MX lookup using ViewDNS, DomainTools, or WhoisXML APIs.
 
         Args:
             mx_host (str): The MX host to look up (e.g. 'aspmx.l.google.com').
-            provider (str): The data provider ('ViewDNS', 'DomainTools', 'WhoisXML').
+            provider (str): The provider to use ('ViewDNS', 'DomainTools', 'WhoisXML').
 
         Returns:
-            List[Dict[str, str]]: A list of dictionaries, each with keys:
-                - 'mx_host': the MX host
-                - 'domain': a domain name found sharing the same MX
-        """
+            List[Dict[str, str]]: List of dictionaries with:
+                - 'mx_host': MX host
+                - 'domain': domain sharing the same MX
 
+        The method logs all activity, handles network and JSON errors,
+        and ensures no exception leaks outside. If the provider or API
+        credentials are missing, it logs errors and returns an empty list.
+        """
         results = []
 
         if not provider:
             self.logger.error("Provider is required for reverse MX lookup.")
             return []
 
-        self.logger.info(f"Reverse MX lookup via {provider} for host {mx_host}")
+        self.logger.info(f"Starting reverse MX lookup via {provider} for host: {mx_host}")
 
-        if provider == "ViewDNS":
-            url = f"https://api.viewdns.info/reversemx/?host={mx_host}&apikey=demo&output=json"
-            try:
-                response = requests.get(url, timeout=10)
+        try:
+            if provider == "ViewDNS":
+                api_key = self.api_keys.get("viewdns_api_key")
+                if not api_key:
+                    self.logger.error("Missing ViewDNS API key in config/settings.json.")
+                    return []
+
+                url = f"https://api.viewdns.info/reversemx/"
+                params = {
+                    "host": mx_host,
+                    "apikey": api_key,
+                    "output": "json"
+                }
+                response = requests.get(url, params=params, timeout=10)
                 response.raise_for_status()
-
                 data = response.json()
 
                 domains = data.get("response", {}).get("domains", [])
+                if not isinstance(domains, list):
+                    self.logger.error(f"Unexpected JSON structure from ViewDNS for {mx_host}.")
+                    return []
+
                 if not domains:
-                    self.logger.warning(f"No domains found for {mx_host} via ViewDNS.")
+                    self.logger.info(f"No domains found for {mx_host} via ViewDNS.")
+                else:
+                    for d in domains:
+                        results.append({"mx_host": mx_host, "domain": d})
+                        self.logger.info(f"ViewDNS found domain: {d}")
 
-                for d in domains:
-                    results.append({
-                        "mx_host": mx_host,
-                        "domain": d
-                    })
-                    self.logger.info(f"Found domain via ViewDNS: {d}")
+            elif provider == "DomainTools":
+                user = self.api_keys.get("domaintools_api_user")
+                key = self.api_keys.get("domaintools_api_key")
+                if not user or not key:
+                    self.logger.error("Missing DomainTools API credentials in config/settings.json.")
+                    return []
 
-            except requests.RequestException as e:
-                self.logger.error(f"HTTP error calling ViewDNS for {mx_host}: {e}")
-            except json.JSONDecodeError:
-                self.logger.error(f"Invalid JSON received from ViewDNS for {mx_host}")
-            except Exception as e:
-                self.logger.exception(f"Unexpected error in ViewDNS lookup for {mx_host}: {e}")
+                url = f"https://api.domaintools.com/v1/{mx_host}/reversens"
+                response = requests.get(url, auth=(user, key), timeout=10)
+                response.raise_for_status()
+                data = response.json()
 
-        elif provider == "DomainTools":
-            # Placeholder for future real implementation
-            self.logger.info(f"Simulated DomainTools lookup for {mx_host}")
-            fake_domain = f"fake-domain-from-domaintools-{mx_host}"
-            results.append({"mx_host": mx_host, "domain": fake_domain})
-            self.logger.info(f"Added simulated domain: {fake_domain}")
+                domains = data.get("response", {}).get("domains", [])
+                if not isinstance(domains, list):
+                    self.logger.error(f"Unexpected JSON structure from DomainTools for {mx_host}.")
+                    return []
 
-        elif provider == "WhoisXML":
-            # Placeholder for future real implementation
-            self.logger.info(f"Simulated WhoisXML lookup for {mx_host}")
-            fake_domain = f"fake-domain-from-whoisxml-{mx_host}"
-            results.append({"mx_host": mx_host, "domain": fake_domain})
-            self.logger.info(f"Added simulated domain: {fake_domain}")
+                if not domains:
+                    self.logger.info(f"No domains found for {mx_host} via DomainTools.")
+                else:
+                    for d in domains:
+                        results.append({"mx_host": mx_host, "domain": d})
+                        self.logger.info(f"DomainTools found domain: {d}")
 
-        else:
-            self.logger.warning(f"Provider '{provider}' is not supported yet.")
-            return []
+            elif provider == "WhoisXML":
+                api_key = self.api_keys.get("whoisxml_api_key")
+                if not api_key:
+                    self.logger.error("Missing WhoisXML API key in config/settings.json.")
+                    return []
+
+                url = "https://reverse-mx.whoisxmlapi.com/api/v1"
+                params = {
+                    "apiKey": api_key,
+                    "mx": mx_host,
+                    "outputFormat": "json"
+                }
+                response = requests.get(url, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+
+                domains = data.get("domainsList", [])
+                if not isinstance(domains, list):
+                    self.logger.error(f"Unexpected JSON structure from WhoisXML for {mx_host}.")
+                    return []
+
+                if not domains:
+                    self.logger.info(f"No domains found for {mx_host} via WhoisXML.")
+                else:
+                    for d in domains:
+                        results.append({"mx_host": mx_host, "domain": d})
+                        self.logger.info(f"WhoisXML found domain: {d}")
+
+            else:
+                self.logger.error(f"Provider '{provider}' is not supported.")
+                return []
+
+        except requests.HTTPError as e:
+            self.logger.error(f"HTTP error for provider {provider} and host {mx_host}: {e}")
+        except requests.RequestException as e:
+            self.logger.error(f"Network error calling {provider} for {mx_host}: {e}")
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON from {provider} for {mx_host}: {e}")
+        except Exception as e:
+            self.logger.exception(f"Unexpected error in reverse MX lookup via {provider} for {mx_host}: {e}")
 
         if self.throttle > 0:
             self.logger.debug(f"Sleeping for throttle of {self.throttle} seconds.")
@@ -395,25 +448,84 @@ class ReverseMXLookup:
             self.logger.info(f"No results found for reverse MX on {mx_host} with provider {provider}.")
 
         return results
-
-
+ 
+    
     def save_csv(self, data: List[Dict[str, str]], path: str) -> None:
         """
-        Save result to CSV.
+        Save results to a CSV file safely.
+
+        Args:
+            data (List[Dict[str, str]]): Data to write.
+            path (str): Path to CSV file.
+
+        Returns:
+            None
         """
         if not data:
-            self.logger.warning("No data to save.")
+            self.logger.warning("No data to save. CSV export aborted.")
             return
 
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        if not isinstance(data, list) or not all(isinstance(row, dict) for row in data):
+            self.logger.error("Data provided to save_csv is not a list of dictionaries.")
+            return
 
-        fields = list(data[0].keys())
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fields)
-            writer.writeheader()
-            writer.writerows(data)
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
 
-        self.logger.info(f"CSV saved at {path}")
+            fields = list(data[0].keys())
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(data)
+
+            self.logger.info(f"CSV successfully saved at {path}")
+
+        except PermissionError:
+            self.logger.error(f"Permission denied when writing CSV file: {path}")
+        except OSError as e:
+            self.logger.error(f"OS error while saving CSV file {path}: {e}")
+        except Exception as e:
+            self.logger.exception(f"Unexpected error while saving CSV file {path}: {e}")
+
+    def load_api_keys(self) -> dict:
+        """
+        Load API keys from config/settings.json safely.
+
+        Returns:
+            dict: Dictionary with API keys, or empty dict if file
+                missing, empty, or malformed.
+        """
+        config_path = os.path.join("config", "settings.json")
+
+        if not os.path.exists(config_path):
+            self.logger.warning("API config file not found: config/settings.json")
+            return {}
+
+        try:
+            if os.path.getsize(config_path) == 0:
+                self.logger.warning("API config file is empty: config/settings.json")
+                return {}
+
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            if not isinstance(data, dict):
+                self.logger.error("API config JSON must be a dictionary.")
+                return {}
+
+            return data
+
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON in config/settings.json: {e}")
+        except PermissionError:
+            self.logger.error("Permission denied when reading config/settings.json.")
+        except OSError as e:
+            self.logger.error(f"OS error reading config/settings.json: {e}")
+        except Exception as e:
+            self.logger.exception(f"Unexpected error reading config/settings.json: {e}")
+
+        return {}
+
 
 
 def main() -> None:
@@ -457,7 +569,7 @@ def main() -> None:
         errors.append("--provider is required in reverse_mx mode.")
 
     if errors:
-        print("❌ ERROR: Missing or invalid arguments:")
+        print("🛑 ERROR: Missing or invalid arguments:")
         for err in errors:
             print("  - " + err)
         print("\nUse --help for usage instructions.")
@@ -504,6 +616,7 @@ def main() -> None:
         print("ℹ️ No results found.")
     else:
         print(json.dumps(all_records, indent=2))
+
 
 
 if __name__ == "__main__":

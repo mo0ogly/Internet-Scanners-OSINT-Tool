@@ -69,6 +69,7 @@ from tkinter import ttk, scrolledtext, filedialog, messagebox
 import subprocess
 import threading
 import os
+import json
 from typing import Optional
 
 
@@ -90,61 +91,143 @@ class ReverseMXGUI:
                         font=("Segoe UI", 11, "bold"))
 
     def _create_widgets(self) -> None:
+        """
+        Create all widgets for the main GUI window, including:
+
+        - Input fields for lookup mode, target domain or MX host
+        - File selector for batch targets file
+        - Provider selection for reverse MX lookups
+        - Throttle input
+        - Multithreading toggle
+        - Buttons to:
+            - Run the lookup
+            - Open the API Settings window
+            - Save CSV results
+        - Live log display
+        - Results preview area
+
+        This method organizes widgets in logical sections and connects them
+        to the relevant event handlers.
+
+        The API Settings button allows users to enter or update API keys
+        for ViewDNS, DomainTools, and WhoisXML, which are saved in
+        config/settings.json.
+
+        """
+        # Frame for lookup options
         frm = ttk.LabelFrame(self.master, text="Lookup Options")
         frm.pack(fill=tk.X, padx=10, pady=10)
 
+        # Lookup mode dropdown
         ttk.Label(frm, text="Mode:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.combo_mode = ttk.Combobox(frm, values=["mx_lookup", "reverse_mx"],
-                                       state="readonly", width=20)
+        self.combo_mode = ttk.Combobox(
+            frm,
+            values=["mx_lookup", "reverse_mx"],
+            state="readonly",
+            width=20
+        )
         self.combo_mode.grid(row=0, column=1, padx=5, pady=5)
         self.combo_mode.set("mx_lookup")
 
-        ttk.Label(frm, text="Target (domain or MX host):").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        # Target single entry
+        ttk.Label(frm, text="Target (domain or MX host):").grid(
+            row=1, column=0, sticky=tk.W, padx=5, pady=5
+        )
         self.entry_target = ttk.Entry(frm, width=50)
         self.entry_target.grid(row=1, column=1, padx=5, pady=5)
 
-        ttk.Label(frm, text="Or targets file:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        # Targets file entry
+        ttk.Label(frm, text="Or targets file:").grid(
+            row=2, column=0, sticky=tk.W, padx=5, pady=5
+        )
         self.entry_targets_file = ttk.Entry(frm, width=50)
         self.entry_targets_file.grid(row=2, column=1, padx=5, pady=5)
-        ttk.Button(frm, text="Browse...", command=self.browse_targets_file).grid(row=2, column=2, padx=5, pady=5)
 
-        ttk.Label(frm, text="Provider:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
-        self.combo_provider = ttk.Combobox(frm,
-                                           values=["ViewDNS", "DomainTools", "WhoisXML"],
-                                           state="readonly", width=20)
+        ttk.Button(
+            frm,
+            text="Browse...",
+            command=self.browse_targets_file
+        ).grid(row=2, column=2, padx=5, pady=5)
+
+        # Provider dropdown
+        ttk.Label(frm, text="Provider:").grid(
+            row=3, column=0, sticky=tk.W, padx=5, pady=5
+        )
+        self.combo_provider = ttk.Combobox(
+            frm,
+            values=["ViewDNS", "DomainTools", "WhoisXML"],
+            state="readonly",
+            width=20
+        )
         self.combo_provider.grid(row=3, column=1, padx=5, pady=5)
         self.combo_provider.set("ViewDNS")
 
-        ttk.Label(frm, text="Throttle (sec):").grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
+        # Throttle input
+        ttk.Label(frm, text="Throttle (sec):").grid(
+            row=4, column=0, sticky=tk.W, padx=5, pady=5
+        )
         self.entry_throttle = ttk.Entry(frm, width=10)
         self.entry_throttle.insert(0, "0.0")
         self.entry_throttle.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
 
+        # Multithreading checkbox
         self.var_multithread = tk.BooleanVar(value=True)
-        ttk.Checkbutton(frm, text="Use multithreading", variable=self.var_multithread).grid(
-            row=5, column=0, columnspan=2, sticky=tk.W, padx=5, pady=5
-        )
+        ttk.Checkbutton(
+            frm,
+            text="Use multithreading",
+            variable=self.var_multithread
+        ).grid(row=5, column=0, columnspan=2, sticky=tk.W, padx=5, pady=5)
 
-        ttk.Button(frm, text="Run", command=self.start_process).grid(row=6, column=1, sticky=tk.E, padx=5, pady=5)
+        # Run button
+        ttk.Button(
+            frm,
+            text="Run",
+            command=self.start_process
+        ).grid(row=6, column=1, sticky=tk.E, padx=5, pady=5)
 
+        # API Settings button
+        ttk.Button(
+            frm,
+            text="API Settings",
+            command=self.open_settings_window
+        ).grid(row=6, column=2, sticky=tk.W, padx=5, pady=5)
+
+        # Logs label
         ttk.Label(self.master, text="Logs:").pack(anchor=tk.W, padx=10)
-        self.log_text = scrolledtext.ScrolledText(self.master, height=10, width=100,
-                                                  background="#1e1e1e", foreground="#d4d4d4",
-                                                  font=("Consolas", 10))
+
+        # Logs scrolled text
+        self.log_text = scrolledtext.ScrolledText(
+            self.master,
+            height=10,
+            width=100,
+            background="#1e1e1e",
+            foreground="#d4d4d4",
+            font=("Consolas", 10)
+        )
         self.log_text.pack(padx=10, pady=5, fill=tk.BOTH, expand=False)
 
+        # Results label
         ttk.Label(self.master, text="Results CSV Preview:").pack(anchor=tk.W, padx=10)
-        self.result_text = scrolledtext.ScrolledText(self.master, height=12, width=100,
-                                                     background="#e8e8e8", foreground="#333333",
-                                                     font=("Consolas", 10))
+
+        # Results scrolled text
+        self.result_text = scrolledtext.ScrolledText(
+            self.master,
+            height=12,
+            width=100,
+            background="#e8e8e8",
+            foreground="#333333",
+            font=("Consolas", 10)
+        )
         self.result_text.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
 
-        # Save button
-        ttk.Button(self.master, text="Save Results to CSV", command=self.save_results).pack(
-            anchor=tk.E, padx=10, pady=5
-        )
+        # Save results button
+        ttk.Button(
+            self.master,
+            text="Save Results to CSV",
+            command=self.save_results
+        ).pack(anchor=tk.E, padx=10, pady=5)
 
-        # storage for last CSV content
+        # Storage for last CSV content
         self.last_csv_content = ""
 
     def browse_targets_file(self) -> None:
@@ -305,6 +388,58 @@ class ReverseMXGUI:
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(self.last_csv_content)
             messagebox.showinfo("Save", f"Results saved to:\n{save_path}")
+    def open_settings_window(self):
+        """
+        Open a popup window to edit API keys.
+        """
+        settings_win = tk.Toplevel(self.master)
+        settings_win.title("API Settings")
+
+        # Champs ViewDNS
+        ttk.Label(settings_win, text="ViewDNS API Key:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_viewdns = ttk.Entry(settings_win, width=50)
+        entry_viewdns.grid(row=0, column=1, padx=5, pady=5)
+
+        # Champs DomainTools
+        ttk.Label(settings_win, text="DomainTools Username:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_dt_user = ttk.Entry(settings_win, width=50)
+        entry_dt_user.grid(row=1, column=1, padx=5, pady=5)
+
+        ttk.Label(settings_win, text="DomainTools API Key:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_dt_key = ttk.Entry(settings_win, width=50, show="*")
+        entry_dt_key.grid(row=2, column=1, padx=5, pady=5)
+
+        # Champs WhoisXML
+        ttk.Label(settings_win, text="WhoisXML API Key:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_whoisxml = ttk.Entry(settings_win, width=50, show="*")
+        entry_whoisxml.grid(row=3, column=1, padx=5, pady=5)
+
+        # Charger valeurs existantes
+        config_path = os.path.join("config", "settings.json")
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                entry_viewdns.insert(0, data.get("viewdns_api_key", ""))
+                entry_dt_user.insert(0, data.get("domaintools_api_user", ""))
+                entry_dt_key.insert(0, data.get("domaintools_api_key", ""))
+                entry_whoisxml.insert(0, data.get("whoisxml_api_key", ""))
+
+        def save_settings():
+            settings = {
+                "viewdns_api_key": entry_viewdns.get().strip(),
+                "domaintools_api_user": entry_dt_user.get().strip(),
+                "domaintools_api_key": entry_dt_key.get().strip(),
+                "whoisxml_api_key": entry_whoisxml.get().strip()
+            }
+            os.makedirs("config", exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(settings, f, indent=4)
+            messagebox.showinfo("Settings", "API keys saved successfully.")
+            settings_win.destroy()
+
+        ttk.Button(settings_win, text="Save", command=save_settings).grid(
+            row=4, column=1, sticky=tk.E, padx=5, pady=10
+        )
 
 
 def main() -> None:

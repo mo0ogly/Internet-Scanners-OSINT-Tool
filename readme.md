@@ -234,9 +234,9 @@ python3 gui\_scanner.py
       |     MDMCK10/internet-scanners Repository   |
       +----------------------+---------------------+
                              |
-             (clone or pull latest version)
+              
                              |
-                             v
+                             v1
 ```
 
 +-------------------------------------------------------------+
