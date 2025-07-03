@@ -1,0 +1,4 @@
+domain
+google.fr	 
+protonmail.com
+outlook.com

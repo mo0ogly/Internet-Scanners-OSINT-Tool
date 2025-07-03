@@ -50,14 +50,8 @@ import requests
 from ipwhois import IPWhois
 from ipwhois.exceptions import IPDefinedError
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-
+ 
 class InternetScannerExtractor:
-    IPV4_IPV6_REGEX = re.compile(
-        r"(\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b)|"
-        r"((?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4}(?:/\d{1,3})?)"
-    )
-
     def __init__(
         self,
         repo_url: str,
@@ -69,18 +63,26 @@ class InternetScannerExtractor:
         use_multithreading: bool = True,
         enable_abuseipdb: bool = False,
         throttle: float = 0.0
-    ):
+        ):
         self.repo_url = repo_url
         self.repo_path = repo_path
-        self.output_json = output_json
-        self.output_csv = output_csv
         self.abuseipdb_api_key = abuseipdb_api_key
         self.use_multithreading = use_multithreading
         self.enable_abuseipdb = enable_abuseipdb
         self.throttle = throttle
         self.abuseipdb_disabled_due_to_errors = False
-        self.logger = self._setup_logger(log_level)
 
+        # Always resolve to absolute paths
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        self.output_json = os.path.join(base_dir, output_json)
+        self.output_csv = os.path.join(base_dir, output_csv)
+        self.IPV4_IPV6_REGEX = re.compile(
+            r"(\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b)|"
+            r"((?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4}(?:/\d{1,3})?)"
+        )
+        self.logger = self._setup_logger(log_level)
+        
     def _setup_logger(self, level: int) -> logging.Logger:
         
 
@@ -257,6 +259,7 @@ class InternetScannerExtractor:
                     owner = file.replace(".txt", "")
 
                 for line in lines:
+                    
                     matches = self.IPV4_IPV6_REGEX.findall(line)
                     for match in matches:
                         ip_candidate = match[0] or match[1]
@@ -299,21 +302,38 @@ class InternetScannerExtractor:
         return result
 
     def save_json(self, data: List[Dict[str, Any]]) -> None:
+        os.makedirs(os.path.dirname(self.output_json), exist_ok=True)
         with open(self.output_json, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         self.logger.info(f"JSON saved: {self.output_json}")
 
+
     def save_csv(self, data: List[Dict[str, Any]]) -> None:
+        """
+        Save enriched data to CSV file.
+
+        Args:
+            data (List[Dict[str, Any]]): List of enriched IP records.
+        """
         if not data:
+            self.logger.warning("No data to save in CSV.")
             return
 
-        fields = list(data[0].keys())
-        with open(self.output_csv, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fields)
-            writer.writeheader()
-            writer.writerows(data)
+        # Ensure the parent directory exists
+        os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
 
-        self.logger.info(f"CSV saved: {self.output_csv}")
+        fields = list(data[0].keys())
+
+        try:
+            with open(self.output_csv, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(data)
+
+            self.logger.info(f"CSV saved: {self.output_csv}")
+        except Exception as e:
+            self.logger.error(f"Error saving CSV to {self.output_csv}: {e}")
+
 
     def summarize_stats(self, data: List[Dict[str, Any]]) -> None:
         total = len(data)

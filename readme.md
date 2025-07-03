@@ -368,3 +368,200 @@ This project is licensed under the MIT License.
 * AbuseIPDB API for reputation data
 
 Developed and maintained by **m00gly**.
+======================================================================
+ 
+# Reverse MX Lookup Tool
+
+An advanced OSINT tool to analyze email infrastructure by performing:
+
+* **MX lookups**: find which mail servers handle a domain’s email
+* **Reverse MX lookups**: discover domains hosted on the same mail server
+
+Supports:
+
+* CLI mode (batch-friendly, scriptable)
+* GUI mode (Tkinter)
+* Multithreading for faster lookups
+* CSV and JSON exports
+* Optional integration with external APIs (ViewDNS, DomainTools, WhoisXML)
+
+---
+
+## Features
+
+MX Lookup for any domain
+Reverse MX Lookup via:
+
+* [ViewDNS.info](https://viewdns.info/reversemx/) (API key support)
+* DomainTools (simulated for testing)
+* WhoisXML (simulated for testing)
+
+Single target or batch file input
+CLI and GUI with live logs
+Configurable throttle between requests
+CSV export of results
+Thread-safe, multi-threaded processing
+Config file to store API keys
+
+
+### Screenshot
+
+ 
+
+![GUI Screenshot](docs/screenshot_gui_2.png)
+
+---
+
+## Installation
+
+**Requirements:**
+
+* Python ≥ 3.8
+* pip
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+**Dependencies include:**
+
+* `requests`
+* `dnspython`
+* `tkinter` (usually installed by default with Python)
+
+Check your installed Tkinter version:
+
+```bash
+python3 -c "import tkinter; print(tkinter.TkVersion)"
+```
+
+---
+
+## Usage (CLI)
+
+**MX Lookup single domain:**
+
+```bash
+python3 cli_Reverse_MX_Lookup_Tool.py \
+    --mode mx_lookup \
+    --target example.com
+```
+
+**Reverse MX Lookup single host:**
+
+```bash
+python3 cli_Reverse_MX_Lookup_Tool.py \
+    --mode reverse_mx \
+    --target mx1.example.com \
+    --provider ViewDNS
+```
+
+**Reverse MX with multiple targets from file:**
+
+```bash
+python3 cli_Reverse_MX_Lookup_Tool.py \
+    --mode reverse_mx \
+    --targets-file mx.txt \
+    --provider ViewDNS \
+    --export-csv output.csv \
+    --throttle 1.0
+```
+
+**Example `mx.txt`:**
+
+```
+aspmx.l.google.com
+mail.protonmail.ch
+mx1.mail.ovh.net
+```
+
+---
+
+## Usage (GUI)
+
+Run the graphical interface:
+
+```bash
+python3 gui_Reverse_MX_Lookup_Tool.py
+```
+
+**Features in GUI:**
+
+* Mode selection (mx\_lookup or reverse\_mx)
+* Single domain/host or load targets from file
+* Provider selection (for reverse MX)
+* Throttle control
+* Multithreading toggle
+* Live logs window
+* CSV result preview
+* Button to save results
+
+---
+
+## Config & API Keys
+
+External APIs may require keys (e.g. ViewDNS).
+Store keys in a JSON file:
+
+```
+config/settings.json
+```
+
+Example:
+
+```json
+{
+    "viewdns_api_key": "YOUR_API_KEY",
+    "domaintools_api_key": "YOUR_API_KEY",
+    "whoisxml_api_key": "YOUR_API_KEY"
+}
+```
+
+---
+
+## Example Output
+
+```json
+[
+  {
+    "domain": "example.com",
+    "mx_host": "aspmx.l.google.com"
+  }
+]
+```
+
+or CSV:
+
+```
+domain,mx_host
+example.com,aspmx.l.google.com
+```
+
+---
+
+## Architecture
+
+* **cli\_Reverse\_MX\_Lookup\_Tool.py** → CLI entry point
+* **gui\_Reverse\_MX\_Lookup\_Tool.py** → GUI with Tkinter
+* **ReverseMXLookup class** → core logic for lookups
+* Logs stored under `logs/reverse_mx_tool.log`
+
+---
+
+## Roadmap
+
+* Integrate real DomainTools and WhoisXML APIs
+* Better error handling in ViewDNS integration
+* Enhance GUI with progress bars
+
+---
+
+## License
+
+MIT
+
+---
+Developed and maintained by **m00gly**.
+

@@ -1,0 +1,3 @@
+aspmx.l.google.com
+mail.protonmail.ch
+mx1.mail.ovh.net
