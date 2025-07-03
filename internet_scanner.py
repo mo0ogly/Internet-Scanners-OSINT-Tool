@@ -21,9 +21,6 @@ found in files hosted in the GitHub repository:
 
     https://github.com/MDMCK10/internet-scanners
 
-It’s designed for cybersecurity analysts, researchers and developers who
-prefer batch-mode operation or integration into larger pipelines.
-
 Features include:
 - automatic git clone or pull
 - detection of IPv4 and IPv6 addresses
@@ -34,48 +31,7 @@ Features include:
 - multithreading support
 
 ────────────────────────────────────────────
-
-FOR DEVELOPERS
-────────────────────────────────────────────
-Key components:
-- `InternetScannerExtractor`: core class performing repo sync,
-  IP extraction, enrichment and exports
-
-Main development features:
-- Optional AbuseIPDB enrichment, disabled by default to avoid quota issues
-- Throttle parameter to slow down requests and respect API rate limits
-- All logs written both to console and scanner.log
-- Easy to integrate into larger automated workflows
-- Command-line arguments for full customization
-
-How to extend:
-- Add other reputation services (e.g. Shodan, VirusTotal) in
-  `InternetScannerExtractor.enrich_ip`
-- Handle additional file formats for IP parsing
-- Add filtering or scoring logic to detect suspicious scanners
-
-────────────────────────────────────────────
-
-HOW TO RUN
-────────────────────────────────────────────
-Examples:
-
-    # Run with defaults (no AbuseIPDB)
-    python3 internet_scanner_cli.py
-
-    # Enable AbuseIPDB lookups
-    python3 internet_scanner_cli.py --enable-abuseipdb --abuseipdb-api-key YOUR_KEY
-
-    # Add delay between AbuseIPDB calls
-    python3 internet_scanner_cli.py --enable-abuseipdb --throttle 1.0
-
-    # Disable multithreading
-    python3 internet_scanner_cli.py --no-multithread
-
-────────────────────────────────────────────
-
 """
-
 
 import os
 import re
@@ -87,18 +43,16 @@ import logging
 import sys
 import argparse
 import time
+import threading
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import requests
 from ipwhois import IPWhois
 from ipwhois.exceptions import IPDefinedError
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class InternetScannerExtractor:
-    """
-    Extracts and enriches IP addresses from internet scanners data.
-    """
-
     IPV4_IPV6_REGEX = re.compile(
         r"(\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b)|"
         r"((?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4}(?:/\d{1,3})?)"
@@ -113,8 +67,6 @@ class InternetScannerExtractor:
         abuseipdb_api_key: Optional[str] = None,
         log_level=logging.INFO,
         use_multithreading: bool = True,
-        logs_dir: Optional[str] = None,
-        results_dir: Optional[str] = None,
         enable_abuseipdb: bool = False,
         throttle: float = 0.0
     ):
@@ -126,8 +78,8 @@ class InternetScannerExtractor:
         self.use_multithreading = use_multithreading
         self.enable_abuseipdb = enable_abuseipdb
         self.throttle = throttle
-        self.logger = self._setup_logger(log_level)
         self.abuseipdb_disabled_due_to_errors = False
+        self.logger = self._setup_logger(log_level)
 
     def _setup_logger(self, level: int) -> logging.Logger:
         logger = logging.getLogger("InternetScannerExtractor")
@@ -222,10 +174,12 @@ class InternetScannerExtractor:
 
     def enrich_ip(self, ip: str) -> Dict[str, Any]:
         ip_clean = self.strip_cidr(ip)
-        self.logger.info(f"Enriching IP: {ip_clean}")
+        thread_name = threading.current_thread().name
+        self.logger.info(f"[{thread_name}] Enriching IP: {ip_clean}")
 
         ptr = self.reverse_dns(ip_clean)
-        self.logger.info(f"PTR for {ip_clean}: {ptr}")
+        self.logger.info(f"[{thread_name}] PTR for {ip_clean}: {ptr}")
+
 
         enrichment = {
             "ptr_record": ptr
@@ -302,14 +256,38 @@ class InternetScannerExtractor:
                         if ip_candidate:
                             ips.append(ip_candidate.strip())
 
-                for ip in ips:
-                    enrichment = self.enrich_ip(ip)
-                    record = {
-                        "owner": owner,
-                        "ip_or_cidr": ip,
-                        **enrichment
-                    }
-                    result.append(record)
+                records = []
+
+                if self.use_multithreading and ips:
+                    self.logger.info(f"Processing {len(ips)} IPs in multithread mode")
+                    with ThreadPoolExecutor(max_workers=10) as executor:
+                        future_map = {
+                            executor.submit(self.enrich_ip, ip): ip
+                            for ip in ips
+                        }
+                        for future in as_completed(future_map):
+                            ip = future_map[future]
+                            try:
+                                enrichment = future.result()
+                                record = {
+                                    "owner": owner,
+                                    "ip_or_cidr": ip,
+                                    **enrichment
+                                }
+                                records.append(record)
+                            except Exception as e:
+                                self.logger.error(f"Error processing {ip}: {e}")
+                else:
+                    for ip in ips:
+                        enrichment = self.enrich_ip(ip)
+                        record = {
+                            "owner": owner,
+                            "ip_or_cidr": ip,
+                            **enrichment
+                        }
+                        records.append(record)
+
+                result.extend(records)
 
         return result
 

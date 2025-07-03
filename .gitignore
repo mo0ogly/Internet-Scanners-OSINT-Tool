@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+
+# Configs / secrets
+config/settings.json
+
+# VSCode files
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
