@@ -207,7 +207,7 @@ class ReverseMXGUI:
         self.log_text.pack(padx=10, pady=5, fill=tk.BOTH, expand=False)
 
         # Results label
-        ttk.Label(self.master, text="Results CSV Preview:").pack(anchor=tk.W, padx=10)
+        ttk.Label(self.master, text="Results JSON  Preview:").pack(anchor=tk.W, padx=10)
 
         # Results scrolled text
         self.result_text = scrolledtext.ScrolledText(
