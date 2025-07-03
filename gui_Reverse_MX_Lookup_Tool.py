@@ -237,79 +237,106 @@ class ReverseMXGUI:
         if path:
             self.entry_targets_file.delete(0, tk.END)
             self.entry_targets_file.insert(0, path)
-
+            
     def start_process(self) -> None:
         """
-        Builds the CLI command and starts it in a separate thread.
+        Launch the CLI tool from the GUI with user-defined options.
+
+        - Builds the CLI command dynamically based on GUI fields.
+        - Validates all mandatory fields before launching.
+        - Supports:
+            - Single target or targets file
+            - Provider selection for reverse MX mode
+            - Multithreading toggle
+            - Throttle configuration
+            - Optional export of results to JSON or CSV
+        - Clears previous logs and results display.
+        - Runs the CLI in a separate thread to avoid GUI freeze.
+
+        Returns:
+            None
         """
-        cli_path = os.path.join(
-            os.path.dirname(__file__),
-            "cli_Reverse_MX_Lookup_Tool.py"
-        )
+         
 
-        if not os.path.exists(cli_path):
-            messagebox.showerror("Error", f"CLI script not found:\n{cli_path}")
-            return
+        try:
+            # Absolute path to CLI script
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            cli_path = os.path.join(base_dir, "cli_Reverse_MX_Lookup_Tool.py")
 
-        args = ["python3", cli_path]
+            if not os.path.exists(cli_path):
+                messagebox.showerror("Error", f"CLI script not found:\n{cli_path}")
+                return
 
-        # Récupère tous les champs
-        mode = self.combo_mode.get()
-        target = self.entry_target.get().strip()
-        targets_file = getattr(self, "entry_targets_file", None)
-        targets_file_val = targets_file.get().strip() if targets_file else ""
-        provider = self.combo_provider.get()
-        throttle = self.entry_throttle.get().strip()
+            args = ["python3", cli_path]
 
-        # Blindage
-        if not target and not targets_file_val:
-            messagebox.showerror("Error", "Either a single target or a targets file is required.")
-            return
+            # Gather all inputs
+            mode = self.combo_mode.get().strip()
+            target = self.entry_target.get().strip()
+            targets_file = getattr(self, "entry_targets_file", None)
+            targets_file_val = targets_file.get().strip() if targets_file else ""
+            provider = self.combo_provider.get().strip()
+            throttle = self.entry_throttle.get().strip()
 
-        if target and targets_file_val:
-            messagebox.showerror("Error", "Do not specify both target and targets file at the same time.")
-            return
+            # Validations
+            if not mode:
+                messagebox.showerror("Error", "Mode is required.")
+                return
 
-        # Mode
-        args.extend(["--mode", mode])
+            if not target and not targets_file_val:
+                messagebox.showerror("Error", "Either a single target or a targets file is required.")
+                return
 
-        # Target ou targets file
-        if target:
-            args.extend(["--target", target])
-        else:
-            args.extend(["--targets-file", targets_file_val])
+            if target and targets_file_val:
+                messagebox.showerror("Error", "Do not specify both a target and a targets file at the same time.")
+                return
 
-        # Provider (requis en reverse_mx)
-        if mode == "reverse_mx":
-            if not provider:
+            if mode == "reverse_mx" and not provider:
                 messagebox.showerror("Error", "Provider is required in reverse_mx mode.")
                 return
-            args.extend(["--provider", provider])
 
-        # Multithread
-        if self.var_multithread.get() is False:
-            args.append("--no-multithread")
+            # Build CLI arguments
+            args.extend(["--mode", mode])
 
-        # Throttle
-        if throttle and throttle != "0.0":
-            args.extend(["--throttle", throttle])
+            if target:
+                args.extend(["--target", target])
+            else:
+                args.extend(["--targets-file", targets_file_val])
 
-        # CSV export
-        csv_path = None
-        if messagebox.askyesno("Export", "Export results to CSV?"):
-            csv_path = filedialog.asksaveasfilename(
-                defaultextension=".csv",
-                filetypes=[("CSV files", "*.csv")]
-            )
-            if csv_path:
-                args.extend(["--export-csv", csv_path])
+            if mode == "reverse_mx":
+                args.extend(["--provider", provider])
 
-        # Clear previous logs and results
-        self.log_text.delete("1.0", tk.END)
-        self.result_text.delete("1.0", tk.END)
+            if self.var_multithread.get() is False:
+                args.append("--no-multithread")
 
-        # Exécute dans un thread
-        threading.Thread(target=self.run_cli, args=(args, csv_path), daemon=True).start()
+            if throttle and throttle != "0.0":
+                args.extend(["--throttle", throttle])
+
+            # Export option (JSON instead of CSV if preferred)
+            export_path = None
+            if messagebox.askyesno("Export", "Export results to JSON?"):
+                export_path = filedialog.asksaveasfilename(
+                    defaultextension=".json",
+                    filetypes=[("JSON files", "*.json")]
+                )
+                if export_path:
+                    args.extend(["--export-json", export_path])
+
+            # Clear logs and results
+            self.log_text.delete("1.0", tk.END)
+            self.result_text.delete("1.0", tk.END)
+
+            self.log_text.insert(tk.END, f"[INFO] Launching CLI with command:\n{' '.join(args)}\n")
+
+            # Run CLI in a separate thread
+            threading.Thread(
+                target=self.run_cli,
+                args=(args, export_path),
+                daemon=True
+            ).start()
+
+        except Exception as e:
+            self.log_text.insert(tk.END, f"[ERROR] Failed to start CLI process: {e}\n")
+            self.log_text.see(tk.END)
 
     
     def browse_targets_file(self):
@@ -415,7 +442,8 @@ class ReverseMXGUI:
         entry_whoisxml.grid(row=3, column=1, padx=5, pady=5)
 
         # Charger valeurs existantes
-        config_path = os.path.join("config", "settings.json")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, "config", "settings.json")
         if os.path.exists(config_path):
             with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)

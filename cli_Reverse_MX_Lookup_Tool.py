@@ -242,31 +242,54 @@ class ReverseMXLookup:
 
     def _thread_wrapper(self, func, *args, **kwargs):
         """
-        Wrapper to execute a given function inside a thread, while logging
-        thread activity for debugging purposes. This ensures that any
-        exceptions are captured and logged instead of silently failing.
+        Wrapper to execute a given function inside a thread, with detailed logging.
+
+        - Logs the thread name and function being called.
+        - Logs all arguments passed to the function for traceability.
+        - Measures and logs execution time.
+        - Catches any exception raised during execution and logs
+        the full traceback, ensuring the thread does not silently fail.
 
         Args:
-            func (Callable): The function to execute.
-            *args: Positional arguments to pass to the function.
-            **kwargs: Keyword arguments to pass to the function.
+            func (Callable): The function to execute in the thread.
+            *args: Positional arguments for the function.
+            **kwargs: Keyword arguments for the function.
 
         Returns:
-            Any: The return value of the executed function, or None if an error occurred.
+            Any: The return value of the function, or None if an exception occurred.
         """
+        
 
         thread_name = threading.current_thread().name
-        self.logger.debug(f"→ [Thread {thread_name}] Starting execution of {func.__name__}")
+        args_repr = ", ".join(repr(a) for a in args)
+        kwargs_repr = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
+        call_signature = f"{func.__name__}({args_repr}"
+        if kwargs_repr:
+            call_signature += f", {kwargs_repr}"
+        call_signature += ")"
+
+        self.logger.debug(
+            f"→ [Thread {thread_name}] Starting execution: {call_signature}"
+        )
+
+        start_time = time.time()
 
         try:
             result = func(*args, **kwargs)
-            self.logger.debug(f"→ [Thread {thread_name}] Finished execution of {func.__name__}")
+            elapsed = time.time() - start_time
+            self.logger.debug(
+                f"→ [Thread {thread_name}] Finished {func.__name__} in {elapsed:.3f}s"
+            )
             return result
+
         except Exception as e:
-            self.logger.exception(f"‼️ Exception in thread {thread_name} during {func.__name__}: {e}")
+            elapsed = time.time() - start_time
+            self.logger.exception(
+                f"‼️ Exception in thread {thread_name} during {func.__name__} "
+                f"after {elapsed:.3f}s: {e}"
+            )
             return None
 
-    
     
     def mx_lookup(self, domain: str) -> List[Dict[str, str]]:
         """
@@ -491,26 +514,31 @@ class ReverseMXLookup:
         """
         Load API keys from config/settings.json safely.
 
+        The path is resolved relative to the current script location,
+        not the current working directory.
+
         Returns:
             dict: Dictionary with API keys, or empty dict if file
                 missing, empty, or malformed.
         """
-        config_path = os.path.join("config", "settings.json")
-
-        if not os.path.exists(config_path):
-            self.logger.warning("API config file not found: config/settings.json")
-            return {}
-
         try:
+            # Résout le chemin absolu du dossier du script
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(base_dir, "config", "settings.json")
+
+            if not os.path.exists(config_path):
+                self.logger.warning(f"API config file not found: {config_path}")
+                return {}
+
             if os.path.getsize(config_path) == 0:
-                self.logger.warning("API config file is empty: config/settings.json")
+                self.logger.warning(f"API config file is empty: {config_path}")
                 return {}
 
             with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             if not isinstance(data, dict):
-                self.logger.error("API config JSON must be a dictionary.")
+                self.logger.error(f"API config JSON must be a dictionary: {config_path}")
                 return {}
 
             return data
@@ -518,14 +546,13 @@ class ReverseMXLookup:
         except json.JSONDecodeError as e:
             self.logger.error(f"Invalid JSON in config/settings.json: {e}")
         except PermissionError:
-            self.logger.error("Permission denied when reading config/settings.json.")
+            self.logger.error(f"Permission denied when reading config/settings.json.")
         except OSError as e:
             self.logger.error(f"OS error reading config/settings.json: {e}")
         except Exception as e:
             self.logger.exception(f"Unexpected error reading config/settings.json: {e}")
 
         return {}
-
 
 
 def main() -> None:
