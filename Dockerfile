@@ -4,15 +4,18 @@ LABEL maintainer="Fabrice Pizzi <https://github.com/mo0ogly>"
 
 WORKDIR /app
 
-RUN useradd --create-home --no-log-init appuser && \
-    mkdir -p /app/results /app/logs && \
-    chown -R appuser:appuser /app
+RUN apt-get update && apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY internet_scanner.py cli_Reverse_MX_Lookup_Tool.py ./
-COPY samples/ samples/
+RUN useradd --create-home --no-log-init appuser
+
+COPY --chown=appuser:appuser internet_scanner.py cli_Reverse_MX_Lookup_Tool.py ./
+COPY --chown=appuser:appuser samples/ samples/
+
+RUN mkdir -p /app/results /app/logs && chown -R appuser:appuser /app
 
 USER appuser
 
