@@ -306,28 +306,75 @@ python3 gui_Reverse_MX_Lookup_Tool.py
 
 ---
 
-## API Configuration
+## Enrichment: What and Why
 
-Store API keys in `config/settings.json`:
+### Without any API key (default)
+
+The scanner already enriches each IP with:
+- **PTR record** (reverse DNS) — reveals the hostname behind an IP
+- **ASN** — identifies the network operator (e.g. OVH, AWS, DigitalOcean)
+- **Country**, **network name**, **CIDR** — via IPWhois/RDAP
+
+This runs out of the box, no account needed.
+
+### With AbuseIPDB (optional)
+
+[AbuseIPDB](https://www.abuseipdb.com/) is a free community database of reported malicious IPs. Enabling it adds:
+- **Abuse confidence score** (0-100) — how likely the IP is malicious
+- **Total reports** — number of abuse reports filed
+- **ISP** and **domain** — from AbuseIPDB's data
+- **Last reported date**
+
+**Why enable it?** If you're investigating IPs from firewall logs, SIEM alerts, or honeypot data, the abuse score tells you instantly which IPs are known bad actors vs. legitimate scanners.
+
+**How to get a key (free, 2 minutes):**
+1. Go to [abuseipdb.com/register](https://www.abuseipdb.com/register)
+2. Create a free account
+3. Go to [abuseipdb.com/account/api](https://www.abuseipdb.com/account/api) and copy your key
+
+**How to use it:**
+
+```bash
+# CLI
+python3 internet_scanner.py --enable-abuseipdb --abuseipdb-api-key YOUR_KEY --throttle 1.0
+
+# Docker
+docker run --rm -it -v "$(pwd)/results:/app/results" internet-scanners-osint menu
+# → choose option 1 or 2, answer "yes" when asked about AbuseIPDB
+```
+
+The `--throttle 1.0` adds a 1-second delay between API calls to stay within rate limits.
+
+| Plan | Requests/day | Cost |
+|------|-------------|------|
+| Free | 1,000 | Free |
+| Webmaster | 3,000 | Free (requires website) |
+
+### Reverse MX API keys
+
+The Reverse MX Lookup tool requires an API key from one of these providers:
+
+| Provider | What it does | Get a key |
+|----------|-------------|-----------|
+| [ViewDNS.info](https://viewdns.info/api/) | Reverse MX lookup | Free tier available |
+| [DomainTools](https://www.domaintools.com/) | Reverse NS lookup | Paid |
+| [WhoisXML](https://www.whoisxmlapi.com/) | Reverse MX lookup | Free trial |
+
+### Storing API keys
+
+Store all keys in `config/settings.json` (auto-created by the GUIs):
 
 ```json
 {
+    "abuseipdb_api_key": "YOUR_KEY",
     "viewdns_api_key": "YOUR_KEY",
     "domaintools_api_user": "YOUR_USER",
     "domaintools_api_key": "YOUR_KEY",
-    "whoisxml_api_key": "YOUR_KEY",
-    "abuseipdb_api_key": "YOUR_KEY"
+    "whoisxml_api_key": "YOUR_KEY"
 }
 ```
 
-This file is excluded from version control (`.gitignore`). Both GUIs can save/load keys from this file.
-
-### AbuseIPDB API Limits
-
-| Plan | Requests/day |
-|------|-------------|
-| Free | 1,000 |
-| Webmaster | 3,000 |
+This file is excluded from version control (`.gitignore`). Both GUIs can save/load keys from this file. File permissions are set to `600` (owner-only read/write).
 
 ---
 
