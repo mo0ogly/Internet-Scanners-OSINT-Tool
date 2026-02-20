@@ -31,12 +31,25 @@ pip install -r requirements.txt
 # Build
 docker build -t internet-scanners-osint .
 
-# Run (results saved to ./results/)
-docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint
+# Show help (available commands)
+docker run --rm internet-scanners-osint
 
-# With AbuseIPDB
-docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint \
-    --enable-abuseipdb --abuseipdb-api-key YOUR_KEY
+# Internet Scanner (results saved to ./results/)
+docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner
+
+# Internet Scanner with AbuseIPDB
+docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner \
+    --enable-abuseipdb --abuseipdb-api-key YOUR_KEY --throttle 1.0
+
+# MX Lookup
+docker run --rm internet-scanners-osint reverse-mx --mode mx_lookup --target example.com
+
+# Reverse MX Lookup
+docker run --rm internet-scanners-osint reverse-mx --mode reverse_mx \
+    --target aspmx.l.google.com --provider ViewDNS
+
+# Interactive shell
+docker run --rm -it internet-scanners-osint shell
 ```
 
 ### Development
