@@ -40,7 +40,7 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["internet_scanner", "gui_scanner", "cli_Reverse_MX_Lookup_Tool", "gui_Reverse_MX_Lookup_Tool", "menu"]
+py-modules = ["internet_scanner", "gui_scanner", "gui_common", "cli_Reverse_MX_Lookup_Tool", "gui_Reverse_MX_Lookup_Tool", "menu"]
 packages = []
 
 [tool.pytest.ini_options]
