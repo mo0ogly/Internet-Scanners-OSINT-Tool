@@ -4,14 +4,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)]()
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![CLI + GUI](https://img.shields.io/badge/Interface-CLI%20%2B%20GUI-orange.svg)]()
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg)]()
 
-A Python-based OSINT toolkit for cybersecurity analysts, threat hunters, and network defenders. Two tools in one repository:
+A Python-based OSINT toolkit for cybersecurity analysts, threat hunters, and network defenders.
 
-1. **Internet Scanners Extractor** — Extract and enrich IP addresses from known internet scanning projects
-2. **Reverse MX Lookup Tool** — Discover email infrastructure and enumerate domains sharing mail servers
+**Two tools, three interfaces:**
 
-Both tools are available as CLI (scriptable, batch-friendly) and Tkinter GUI (interactive).
+| Tool | What it does |
+|------|-------------|
+| **Internet Scanners Extractor** | Extracts IPs from known scanner lists, enriches them with PTR, ASN, and AbuseIPDB data |
+| **Reverse MX Lookup** | Discovers email infrastructure and enumerates domains sharing the same mail server |
+
+Each tool is available as **CLI**, **Tkinter GUI**, and **Docker container** (with interactive menu).
 
 > **Author**: [Fabrice Pizzi](https://github.com/mo0ogly) — Cyber Defense & AI Security Expert
 
@@ -19,57 +23,157 @@ Both tools are available as CLI (scriptable, batch-friendly) and Tkinter GUI (in
 
 ## Quick Start
 
+### Option 1: Docker (recommended)
+
+No Python install required. Build once, run anywhere.
+
+```bash
+git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
+cd Internet-Scanners-OSINT-Tool
+docker build -t internet-scanners-osint .
+```
+
+**Interactive menu** — the easiest way to get started:
+
+```bash
+docker run --rm -it -v "$(pwd)/results:/app/results" internet-scanners-osint menu
+```
+
+This opens a guided menu where you choose what to do:
+
+```
+============================================
+  Internet Scanners OSINT Tool
+============================================
+
+  1) Internet Scanner — from Git repo (default: MDMCK10/internet-scanners)
+  2) Internet Scanner — from local IP file
+  3) Reverse MX Lookup — MX lookup for a domain
+  4) Reverse MX Lookup — Reverse MX (find domains on a mail server)
+  5) Quit
+
+  Choose [1-5]:
+```
+
+Each option guides you step by step (repo URL, AbuseIPDB, throttle, etc.) before launching.
+
+### Option 2: Python (native)
+
 ```bash
 git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
 cd Internet-Scanners-OSINT-Tool
 pip install -r requirements.txt
 ```
 
-### Docker
+---
+
+## Docker Usage
+
+### Interactive menu
 
 ```bash
-# Build
-docker build -t internet-scanners-osint .
+docker run --rm -it -v "$(pwd)/results:/app/results" internet-scanners-osint menu
+```
 
-# Show help (available commands)
+### Direct commands
+
+For scripting or CI pipelines, use direct commands instead of the menu:
+
+```bash
+# Show all available commands
 docker run --rm internet-scanners-osint
 
 # Show scanner options
 docker run --rm internet-scanners-osint scanner
-
-# Internet Scanner (results saved to ./results/)
-docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner --run
-
-# Internet Scanner with AbuseIPDB
-docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner --run \
-    --enable-abuseipdb --abuseipdb-api-key YOUR_KEY --throttle 1.0
-
-# MX Lookup
-docker run --rm internet-scanners-osint reverse-mx --mode mx_lookup --target example.com
-
-# Reverse MX Lookup
-docker run --rm internet-scanners-osint reverse-mx --mode reverse_mx \
-    --target aspmx.l.google.com --provider ViewDNS
-
-# Interactive shell
-docker run --rm -it internet-scanners-osint shell
 ```
 
-### Development
+#### Internet Scanner — from Git repo
+
+Clones a repo containing scanner IP lists (default: [MDMCK10/internet-scanners](https://github.com/MDMCK10/internet-scanners)), extracts all IPs, and enriches each one.
 
 ```bash
-pip install -e ".[dev]"
-make test          # pytest with coverage
-make lint          # ruff check
-make lint-fix      # ruff auto-fix
-make docker-build  # build container
+# Basic scan (default repo)
+docker run --rm -v "$(pwd)/results:/app/results" \
+    internet-scanners-osint scanner --run
+
+# Custom repo
+docker run --rm -v "$(pwd)/results:/app/results" \
+    internet-scanners-osint scanner --run \
+    --repo-url https://github.com/user/other-scanner-list.git
+
+# With AbuseIPDB enrichment
+docker run --rm -v "$(pwd)/results:/app/results" \
+    internet-scanners-osint scanner --run \
+    --enable-abuseipdb --abuseipdb-api-key YOUR_KEY --throttle 1.0
+```
+
+#### Internet Scanner — from local IP file
+
+Scan your own list of IPs instead of cloning a repo. Create a text file with one IP per line:
+
+```
+# my_ips.txt
+8.8.8.8
+1.1.1.1
+45.33.84.152
+2606:4700::6810:85e5
+```
+
+```bash
+docker run --rm \
+    -v "$(pwd)/results:/app/results" \
+    -v "$(pwd)/my_ips.txt:/app/input.txt" \
+    internet-scanners-osint scanner --run --input-file /app/input.txt
+```
+
+#### MX Lookup
+
+Find which mail servers handle a domain's email:
+
+```bash
+docker run --rm internet-scanners-osint \
+    reverse-mx --mode mx_lookup --target google.com
+```
+
+#### Reverse MX Lookup
+
+Discover all domains hosted on the same mail server:
+
+```bash
+docker run --rm internet-scanners-osint \
+    reverse-mx --mode reverse_mx \
+    --target aspmx.l.google.com \
+    --provider ViewDNS
+```
+
+#### Interactive shell
+
+```bash
+docker run --rm -it internet-scanners-osint shell
 ```
 
 ---
 
 ## Tool 1: Internet Scanners Extractor
 
-Extracts and enriches IP addresses from the [MDMCK10/internet-scanners](https://github.com/MDMCK10/internet-scanners) repository.
+### How it works
+
+1. **Input**: clones a Git repo containing scanner IP lists, or reads a local IP file
+2. **Extraction**: parses `.txt`, `.conf`, `.nft` files to find IPv4/IPv6 addresses
+3. **Enrichment** (for each IP):
+   - Reverse DNS (PTR) lookup
+   - ASN and network info via IPWhois (RDAP)
+   - AbuseIPDB reputation score (optional, requires API key)
+4. **Output**: timestamped JSON and CSV files in `results/`
+
+```
+Input source                   Enrichment pipeline               Output
+─────────────                  ────────────────────              ──────
+Git repo (remote)    ──┐
+                       ├──►  Extract IPs  ──►  PTR   ──┐
+Local IP file        ──┘     from files       ASN    ──┼──►  JSON + CSV
+                                              Abuse  ──┘     in results/
+```
 
 ### Features
 
@@ -77,15 +181,19 @@ Extracts and enriches IP addresses from the [MDMCK10/internet-scanners](https://
 - Reverse DNS (PTR) lookups
 - ASN and network enrichment via IPWhois (RDAP)
 - Optional [AbuseIPDB](https://www.abuseipdb.com/) integration (reputation score, ISP, country)
-- Multithreading support
+- **Local file mode**: scan your own IP list without cloning any repo
+- Multithreading support (10 workers)
 - Timestamped JSON and CSV exports
 - Configurable throttling for API rate limits
 
 ### CLI Usage
 
 ```bash
-# Basic extraction (no AbuseIPDB)
+# Basic extraction from default repo
 python3 internet_scanner.py
+
+# From a local file of IPs
+python3 internet_scanner.py --input-file my_ips.txt
 
 # With AbuseIPDB enrichment
 python3 internet_scanner.py \
@@ -101,6 +209,7 @@ python3 internet_scanner.py --no-multithread
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--input-file` | Local file with IPs (one per line), skips git clone | None |
 | `--repo-url` | Git repo URL to clone | MDMCK10/internet-scanners |
 | `--repo-path` | Local path for repo clone | `internet-scanners` |
 | `--output-json` | JSON output filename | `internet_scanners_enriched.json` |
@@ -139,12 +248,13 @@ python3 gui_scanner.py
 
 ## Tool 2: Reverse MX Lookup Tool
 
-Analyze email infrastructure by performing MX lookups and reverse MX lookups.
+### How it works
+
+- **MX Lookup**: queries DNS to find which mail servers handle a domain's email
+- **Reverse MX Lookup**: queries a provider API to find all domains sharing the same mail server
 
 ### Features
 
-- **MX Lookup**: Find which mail servers handle a domain's email
-- **Reverse MX Lookup**: Discover all domains hosted on the same mail server
 - Providers: [ViewDNS.info](https://viewdns.info/), DomainTools, WhoisXML
 - Single target or batch file input
 - Multithreading for faster processing
@@ -210,7 +320,7 @@ Store API keys in `config/settings.json`:
 }
 ```
 
-This file is excluded from version control (`.gitignore`).
+This file is excluded from version control (`.gitignore`). Both GUIs can save/load keys from this file.
 
 ### AbuseIPDB API Limits
 
@@ -221,15 +331,29 @@ This file is excluded from version control (`.gitignore`).
 
 ---
 
+## Development
+
+```bash
+pip install -e ".[dev]"
+
+make test          # pytest with coverage
+make lint          # ruff check
+make lint-fix      # ruff auto-fix
+make docker-build  # build Docker image
+make docker-run    # run scanner via Docker
+make clean         # remove caches and build artifacts
+```
+
 ## Architecture
 
 ```
 Internet-Scanners-OSINT-Tool/
 │
-├── internet_scanner.py                 ← Scanner: core extraction & enrichment engine
+├── internet_scanner.py                 ← Scanner: core extraction & enrichment
 ├── gui_scanner.py                      ← Scanner: Tkinter GUI
-├── cli_Reverse_MX_Lookup_Tool.py       ← Reverse MX: CLI entry point
+├── cli_Reverse_MX_Lookup_Tool.py       ← Reverse MX: CLI
 ├── gui_Reverse_MX_Lookup_Tool.py       ← Reverse MX: Tkinter GUI
+├── menu.py                             ← Interactive menu (Docker & CLI)
 │
 ├── tests/                              ← Unit tests (pytest)
 │   ├── conftest.py
@@ -239,63 +363,35 @@ Internet-Scanners-OSINT-Tool/
 │
 ├── config/                             ← API keys (git-ignored)
 │   └── settings.json
-│
 ├── samples/                            ← Example input files
 │   ├── domain.txt
 │   └── mx.txt
-│
 ├── docs/                               ← Screenshots
 │
 ├── .github/
-│   ├── workflows/ci.yml                ← CI: lint + test matrix (3.9, 3.10, 3.12)
+│   ├── workflows/ci.yml                ← CI: lint + test (Python 3.9, 3.10, 3.12)
 │   ├── workflows/release.yml           ← Auto release on tag push
 │   ├── dependabot.yml                  ← Automated dependency updates
 │   ├── ISSUE_TEMPLATE/
 │   └── PULL_REQUEST_TEMPLATE.md
 │
+├── Dockerfile                          ← Container build
+├── docker-entrypoint.sh                ← Docker command router
 ├── pyproject.toml                      ← Project metadata & build config
 ├── requirements.txt                    ← Runtime dependencies
-├── Makefile                            ← Dev shortcuts (install, test, lint, docker)
-├── Dockerfile                          ← Container build
+├── Makefile                            ← Dev shortcuts
 ├── .pre-commit-config.yaml             ← Pre-commit hooks (ruff)
 │
 ├── results/                            ← Output directory (git-ignored)
 └── logs/                               ← Log files (git-ignored)
 ```
 
-### Data Flow — Internet Scanner
-
-```
-MDMCK10/internet-scanners (GitHub)
-        │
-        ▼  git clone / pull
-┌──────────────────────────────┐
-│  InternetScannerExtractor    │
-│  ─────────────────────────── │
-│  1. Parse .txt/.conf/.nft    │
-│  2. Extract IPv4/IPv6        │
-│  3. PTR lookup               │
-│  4. ASN enrichment (IPWhois) │
-│  5. AbuseIPDB (optional)     │
-└──────────┬───────────────────┘
-           │
-     ┌─────┴─────┐
-     ▼           ▼
-  JSON/CSV    CLI logs
-  exports     or GUI
-```
-
 ---
 
 ## Prerequisites
 
-- Python 3.9+
-- Git (for cloning upstream data)
-- **Tkinter** (for GUI — install on Linux: `sudo apt install python3-tk`)
-
-```bash
-pip install -r requirements.txt
-```
+- **Docker** (recommended) — no other dependency needed
+- Or: Python 3.9+, Git, and optionally **Tkinter** (`sudo apt install python3-tk`)
 
 ---
 
@@ -304,6 +400,7 @@ pip install -r requirements.txt
 - Track known internet scanning infrastructure
 - Correlate scanner IPs with ASN owners and ISPs
 - Check scanner reputation via AbuseIPDB
+- Enrich your own IP lists (firewall logs, SIEM exports)
 - Feed enriched data into SIEMs (Elastic, Splunk)
 - Investigate suspicious traffic in network forensics
 - Map email infrastructure for domain analysis
