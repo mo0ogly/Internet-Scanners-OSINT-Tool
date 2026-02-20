@@ -35,16 +35,46 @@ def yes_no(text, default=False):
     return val in ("y", "yes", "o", "oui")
 
 
+def _detect_python():
+    """Find the best available Python interpreter."""
+    for cmd in ("python3.12", "python3.11", "python3.10", "python3.9", "python3"):
+        try:
+            subprocess.run([cmd, "--version"], capture_output=True, check=True)
+            return cmd
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            continue
+    return "python3"
+
+
+def _has_display():
+    """Check if a graphical display is available."""
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
 def main_menu():
     clear()
     print(BANNER)
-    print("  1) Internet Scanner — from Git repo (default: MDMCK10/internet-scanners)")
+    print("  ── CLI ──────────────────────────────────────────────────")
+    print("  1) Internet Scanner — from Git repo")
     print("  2) Internet Scanner — from local IP file")
     print("  3) Reverse MX Lookup — MX lookup for a domain")
     print("  4) Reverse MX Lookup — Reverse MX (find domains on a mail server)")
-    print("  5) Quit")
     print()
-    return input("  Choose [1-5]: ").strip()
+    if _has_display():
+        print("  ── GUI (Tkinter) ────────────────────────────────────────")
+        print("  5) Internet Scanner GUI")
+        print("  6) Reverse MX Lookup GUI")
+        print()
+        print("  q) Quit")
+        print()
+        return input("  Choose [1-6/q]: ").strip()
+    else:
+        print("  ── GUI ──────────────────────────────────────────────────")
+        print("  5) (unavailable — no display detected)")
+        print()
+        print("  q) Quit")
+        print()
+        return input("  Choose [1-4/q]: ").strip()
 
 
 def run_scanner_repo():
@@ -56,7 +86,8 @@ def run_scanner_repo():
     multithread = yes_no("Enable multithreading?", default=True)
     enable_abuse = yes_no("Enable AbuseIPDB enrichment?", default=False)
 
-    cmd = ["python3", "internet_scanner.py"]
+    python = _detect_python()
+    cmd = [python, "internet_scanner.py"]
 
     if repo_url != "https://github.com/MDMCK10/internet-scanners.git":
         cmd.extend(["--repo-url", repo_url])
@@ -90,7 +121,8 @@ def run_scanner_file():
     multithread = yes_no("Enable multithreading?", default=True)
     enable_abuse = yes_no("Enable AbuseIPDB enrichment?", default=False)
 
-    cmd = ["python3", "internet_scanner.py", "--input-file", input_file]
+    python = _detect_python()
+    cmd = [python, "internet_scanner.py", "--input-file", input_file]
 
     if not multithread:
         cmd.append("--no-multithread")
@@ -116,7 +148,8 @@ def run_mx_lookup():
         print("  Error: domain required.")
         return
 
-    cmd = ["python3", "cli_Reverse_MX_Lookup_Tool.py", "--mode", "mx_lookup", "--target", target]
+    python = _detect_python()
+    cmd = [python, "cli_Reverse_MX_Lookup_Tool.py", "--mode", "mx_lookup", "--target", target]
 
     print(f"\n  Running: {' '.join(cmd)}\n")
     subprocess.run(cmd)
@@ -140,8 +173,9 @@ def run_reverse_mx():
     throttle = prompt("Throttle between requests (seconds)", "0.0")
     export = yes_no("Export results to CSV?", default=False)
 
+    python = _detect_python()
     cmd = [
-        "python3", "cli_Reverse_MX_Lookup_Tool.py",
+        python, "cli_Reverse_MX_Lookup_Tool.py",
         "--mode", "reverse_mx",
         "--target", target,
         "--provider", provider,
@@ -156,8 +190,25 @@ def run_reverse_mx():
     subprocess.run(cmd)
 
 
+def run_gui_scanner():
+    clear()
+    print(BANNER)
+    print("  Launching Internet Scanner GUI...\n")
+    python = _detect_python()
+    subprocess.Popen([python, "gui_scanner.py"])
+    print("  GUI window opened. You can close it when done.")
+
+
+def run_gui_reverse_mx():
+    clear()
+    print(BANNER)
+    print("  Launching Reverse MX Lookup GUI...\n")
+    python = _detect_python()
+    subprocess.Popen([python, "gui_Reverse_MX_Lookup_Tool.py"])
+    print("  GUI window opened. You can close it when done.")
+
+
 def main():
-    # If running with --non-interactive, just show help and exit
     if "--help" in sys.argv or "-h" in sys.argv:
         print(BANNER)
         print("  Interactive menu for Internet Scanners OSINT Tool.")
@@ -179,7 +230,23 @@ def main():
         elif choice == "4":
             run_reverse_mx()
             pause()
-        elif choice in ("5", "q", "quit", "exit"):
+        elif choice == "5":
+            if _has_display():
+                run_gui_scanner()
+                pause()
+            else:
+                print("\n  No display detected. GUI requires a desktop environment.")
+                print("  Run directly: python3 gui_scanner.py")
+                pause()
+        elif choice == "6":
+            if _has_display():
+                run_gui_reverse_mx()
+                pause()
+            else:
+                print("\n  No display detected. GUI requires a desktop environment.")
+                print("  Run directly: python3 gui_Reverse_MX_Lookup_Tool.py")
+                pause()
+        elif choice in ("q", "quit", "exit"):
             print("\n  Bye!\n")
             break
         else:

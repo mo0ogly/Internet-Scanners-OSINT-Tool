@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-fix clean docker-build docker-run
+.PHONY: install test lint lint-fix clean menu gui gui-mx docker-build docker-run docker-menu
 
 install:
 	pip install -e ".[dev]"
@@ -17,8 +17,20 @@ clean:
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .coverage htmlcov *.egg-info dist build
 
+menu:
+	python3 menu.py
+
+gui:
+	python3 gui_scanner.py
+
+gui-mx:
+	python3 gui_Reverse_MX_Lookup_Tool.py
+
 docker-build:
 	docker build -t internet-scanners-osint .
 
 docker-run:
 	docker run --rm -v "$$(pwd)/results:/app/results" internet-scanners-osint scanner --run
+
+docker-menu:
+	docker run --rm -it -v "$$(pwd)/results:/app/results" internet-scanners-osint menu

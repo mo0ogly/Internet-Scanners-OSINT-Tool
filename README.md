@@ -46,43 +46,44 @@ This opens a guided menu where you choose what to do:
   Internet Scanners OSINT Tool
 ============================================
 
-  1) Internet Scanner — from Git repo (default: MDMCK10/internet-scanners)
+  ── CLI ──────────────────────────────────────────────────
+  1) Internet Scanner — from Git repo
   2) Internet Scanner — from local IP file
   3) Reverse MX Lookup — MX lookup for a domain
   4) Reverse MX Lookup — Reverse MX (find domains on a mail server)
-  5) Quit
 
-  Choose [1-5]:
+  ── GUI (Tkinter) ────────────────────────────────────────
+  5) Internet Scanner GUI
+  6) Reverse MX Lookup GUI
+
+  q) Quit
 ```
 
-Each option guides you step by step (repo URL, AbuseIPDB, throttle, etc.) before launching.
+Each option guides you step by step (repo URL, AbuseIPDB, throttle, etc.) before launching. GUI options (5-6) open a Tkinter desktop window.
 
-### Option 2: Tkinter GUI (desktop)
-
-For a graphical interface with real-time logs, point-and-click configuration, and result previews.
+### Option 2: Native Python
 
 ```bash
 git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
 cd Internet-Scanners-OSINT-Tool
 pip install -r requirements.txt
-
-# Internet Scanner GUI
-python3 gui_scanner.py
-
-# Reverse MX Lookup GUI
-python3 gui_Reverse_MX_Lookup_Tool.py
 ```
 
 > **Linux**: Tkinter may need to be installed separately: `sudo apt install python3-tk`
 
-### Option 3: CLI (scriptable)
+Then use the same interactive menu, or launch directly:
 
 ```bash
-git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
-cd Internet-Scanners-OSINT-Tool
-pip install -r requirements.txt
+# Interactive menu (CLI + GUI)
+python3 menu.py
+# or
+make menu
 
-# See all options
+# Launch GUIs directly
+make gui           # Internet Scanner GUI
+make gui-mx        # Reverse MX Lookup GUI
+
+# Launch CLI directly
 python3 internet_scanner.py --help
 python3 cli_Reverse_MX_Lookup_Tool.py --help
 ```
@@ -438,14 +439,22 @@ This file is excluded from version control (`.gitignore`). Both GUIs can save/lo
 
 ```bash
 pip install -e ".[dev]"
-
-make test          # pytest with coverage
-make lint          # ruff check
-make lint-fix      # ruff auto-fix
-make docker-build  # build Docker image
-make docker-run    # run scanner via Docker
-make clean         # remove caches and build artifacts
 ```
+
+### Make targets
+
+| Target | Description |
+|--------|-------------|
+| `make menu` | Launch interactive menu (CLI + GUI) |
+| `make gui` | Launch Internet Scanner GUI |
+| `make gui-mx` | Launch Reverse MX Lookup GUI |
+| `make test` | Run pytest with coverage |
+| `make lint` | Run ruff linter |
+| `make lint-fix` | Auto-fix lint issues |
+| `make docker-build` | Build Docker image |
+| `make docker-run` | Run scanner via Docker |
+| `make docker-menu` | Launch Docker interactive menu |
+| `make clean` | Remove caches and build artifacts |
 
 ## Architecture
 
