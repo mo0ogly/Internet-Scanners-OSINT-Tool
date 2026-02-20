@@ -57,13 +57,85 @@ This opens a guided menu where you choose what to do:
 
 Each option guides you step by step (repo URL, AbuseIPDB, throttle, etc.) before launching.
 
-### Option 2: Python (native)
+### Option 2: Tkinter GUI (desktop)
+
+For a graphical interface with real-time logs, point-and-click configuration, and result previews.
 
 ```bash
 git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
 cd Internet-Scanners-OSINT-Tool
 pip install -r requirements.txt
+
+# Internet Scanner GUI
+python3 gui_scanner.py
+
+# Reverse MX Lookup GUI
+python3 gui_Reverse_MX_Lookup_Tool.py
 ```
+
+> **Linux**: Tkinter may need to be installed separately: `sudo apt install python3-tk`
+
+### Option 3: CLI (scriptable)
+
+```bash
+git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
+cd Internet-Scanners-OSINT-Tool
+pip install -r requirements.txt
+
+# See all options
+python3 internet_scanner.py --help
+python3 cli_Reverse_MX_Lookup_Tool.py --help
+```
+
+---
+
+## GUI (Tkinter)
+
+Both tools have a full Tkinter desktop GUI. No terminal needed — everything is configurable via the interface.
+
+### Internet Scanner GUI
+
+```bash
+python3 gui_scanner.py
+```
+
+![Internet Scanner GUI](docs/screenshot_gui.png)
+
+**What you can configure in the GUI:**
+- Output directories for logs and results
+- JSON and CSV filenames
+- Enable/disable multithreading
+- Enable/disable AbuseIPDB enrichment
+- AbuseIPDB API key (saved securely in `config/settings.json`)
+- Throttle delay between API calls
+
+**Buttons:**
+- **Update DB** — clones/updates the scanner repo, extracts IPs, enriches, and exports JSON + CSV
+- **Export Data** — re-exports existing JSON data to CSV
+- **Save API Key** — saves the AbuseIPDB key to config (preserves other keys)
+
+The log window shows real-time progress with timestamps. A stats bar at the bottom shows totals (IPs, IPv4/IPv6, AbuseIPDB reports).
+
+### Reverse MX Lookup GUI
+
+```bash
+python3 gui_Reverse_MX_Lookup_Tool.py
+```
+
+![Reverse MX GUI](docs/screenshot_gui_2.png)
+
+**What you can configure in the GUI:**
+- Mode: MX Lookup or Reverse MX
+- Single target or batch file
+- Provider: ViewDNS, DomainTools, or WhoisXML
+- Throttle delay
+- Enable/disable multithreading
+
+**Features:**
+- Live log display with dark theme
+- JSON results preview directly in the interface
+- Save results to CSV
+- **API Settings** button to configure all provider keys (ViewDNS, DomainTools, WhoisXML)
 
 ---
 
@@ -219,14 +291,6 @@ python3 internet_scanner.py --no-multithread
 | `--throttle` | Delay (seconds) between API calls | 0.0 |
 | `--no-multithread` | Disable multithreading | Enabled |
 
-### GUI Usage
-
-```bash
-python3 gui_scanner.py
-```
-
-![Internet Scanner GUI](docs/screenshot_gui.png)
-
 ### Output Example
 
 ```json
@@ -295,14 +359,6 @@ python3 cli_Reverse_MX_Lookup_Tool.py \
 | `--throttle` | Delay between requests (seconds) |
 | `--no-multithread` | Disable multithreading |
 | `--export-csv` | CSV output path |
-
-### GUI Usage
-
-```bash
-python3 gui_Reverse_MX_Lookup_Tool.py
-```
-
-![Reverse MX GUI](docs/screenshot_gui_2.png)
 
 ---
 
