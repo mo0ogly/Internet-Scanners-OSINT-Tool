@@ -127,15 +127,12 @@ class InternetScannerExtractor:
 
     def abuseipdb_lookup(self, ip: str) -> Dict[str, Any]:
         if not self.enable_abuseipdb:
-            self.logger.info(f"AbuseIPDB disabled → skipping for {ip}")
             return {}
 
         if self.abuseipdb_disabled_due_to_errors:
-            self.logger.warning("AbuseIPDB lookups disabled due to previous errors.")
             return {}
 
         if not self.abuseipdb_api_key:
-            self.logger.info(f"AbuseIPDB skipped for {ip} (no API key)")
             return {}
 
         if self.throttle > 0:
@@ -359,9 +356,11 @@ class InternetScannerExtractor:
         )
 
     def run(self) -> None:
-        self.logger.info(
-            f"Running with multithreading: {self.use_multithreading}"
-        )
+        self.logger.info(f"Multithreading: {self.use_multithreading}")
+        if self.enable_abuseipdb:
+            self.logger.info("AbuseIPDB: enabled")
+        else:
+            self.logger.info("AbuseIPDB: disabled (use --enable-abuseipdb to activate)")
         if self.input_file:
             self.logger.info(f"Input mode: local file ({self.input_file})")
             data = self.parse_input_file(self.input_file)
