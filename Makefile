@@ -21,4 +21,4 @@ docker-build:
 	docker build -t internet-scanners-osint .
 
 docker-run:
-	docker run --rm -v "$$(pwd)/results:/app/results" internet-scanners-osint
+	docker run --rm -v "$$(pwd)/results:/app/results" internet-scanners-osint scanner
