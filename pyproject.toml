@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "internet-scanners-osint-tool"
+version = "1.0.0"
+description = "OSINT tool for extracting and enriching IP addresses from internet scanner lists, with reverse MX lookup capabilities."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    {name = "m00gly"},
+]
+keywords = ["osint", "ip", "scanner", "abuseipdb", "whois", "mx", "dns"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+dependencies = [
+    "requests>=2.31.0",
+    "ipwhois>=1.2.0",
+    "dnspython>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool"
+Repository = "https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool"
+Issues = "https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools]
+py-modules = ["internet_scanner", "gui_scanner", "cli_Reverse_MX_Lookup_Tool", "gui_Reverse_MX_Lookup_Tool"]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

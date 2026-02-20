@@ -26,8 +26,8 @@ Description:
 
 Main Features:
     - Two separate result windows:
-        • Logs Window for real-time logs
-        • Result Preview Window showing CSV content
+        - Logs Window for real-time logs
+        - Result Preview Window showing CSV content
     - Save and load API configuration for external services
     - Integration with the CLI tool for executing lookups
     - All CLI options are accessible via the GUI
@@ -54,9 +54,9 @@ Dependencies:
     - ttk (standard library)
     - The CLI tool (cli_Reverse_MX_Lookup_Tool.py)
     - Additional libraries used in the CLI tool:
-        • requests
-        • dns.resolver
-        • ipwhois
+        - requests
+        - dns.resolver
+        - ipwhois
 
 Logs:
     Logs are displayed in real-time in the GUI and saved
@@ -64,12 +64,12 @@ Logs:
 
 """
 
-import tkinter as tk
-from tkinter import ttk, scrolledtext, filedialog, messagebox
+import json
+import os
 import subprocess
 import threading
-import os
-import json
+import tkinter as tk
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 from typing import Optional
 
 
@@ -91,29 +91,7 @@ class ReverseMXGUI:
                         font=("Segoe UI", 11, "bold"))
 
     def _create_widgets(self) -> None:
-        """
-        Create all widgets for the main GUI window, including:
-
-        - Input fields for lookup mode, target domain or MX host
-        - File selector for batch targets file
-        - Provider selection for reverse MX lookups
-        - Throttle input
-        - Multithreading toggle
-        - Buttons to:
-            - Run the lookup
-            - Open the API Settings window
-            - Save CSV results
-        - Live log display
-        - Results preview area
-
-        This method organizes widgets in logical sections and connects them
-        to the relevant event handlers.
-
-        The API Settings button allows users to enter or update API keys
-        for ViewDNS, DomainTools, and WhoisXML, which are saved in
-        config/settings.json.
-
-        """
+        """Create all widgets for the main GUI window."""
         # Frame for lookup options
         frm = ttk.LabelFrame(self.master, text="Lookup Options")
         frm.pack(fill=tk.X, padx=10, pady=10)
@@ -237,27 +215,9 @@ class ReverseMXGUI:
         if path:
             self.entry_targets_file.delete(0, tk.END)
             self.entry_targets_file.insert(0, path)
-            
+
     def start_process(self) -> None:
-        """
-        Launch the CLI tool from the GUI with user-defined options.
-
-        - Builds the CLI command dynamically based on GUI fields.
-        - Validates all mandatory fields before launching.
-        - Supports:
-            - Single target or targets file
-            - Provider selection for reverse MX mode
-            - Multithreading toggle
-            - Throttle configuration
-            - Optional export of results to JSON or CSV
-        - Clears previous logs and results display.
-        - Runs the CLI in a separate thread to avoid GUI freeze.
-
-        Returns:
-            None
-        """
-         
-
+        """Launch the CLI tool from the GUI with user-defined options."""
         try:
             # Absolute path to CLI script
             base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -287,7 +247,7 @@ class ReverseMXGUI:
                 return
 
             if target and targets_file_val:
-                messagebox.showerror("Error", "Do not specify both a target and a targets file at the same time.")
+                messagebox.showerror("Error", "Do not specify both a target and a targets file.")
                 return
 
             if mode == "reverse_mx" and not provider:
@@ -311,7 +271,7 @@ class ReverseMXGUI:
             if throttle and throttle != "0.0":
                 args.extend(["--throttle", throttle])
 
-            # Export option (JSON instead of CSV if preferred)
+            # Export option
             export_path = None
             if messagebox.askyesno("Export", "Export results to JSON?"):
                 export_path = filedialog.asksaveasfilename(
@@ -338,21 +298,8 @@ class ReverseMXGUI:
             self.log_text.insert(tk.END, f"[ERROR] Failed to start CLI process: {e}\n")
             self.log_text.see(tk.END)
 
-    
-    def browse_targets_file(self):
-        path = filedialog.askopenfilename(
-            title="Select Targets File",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
-        )
-        if path:
-            self.entry_targets_file.delete(0, tk.END)
-            self.entry_targets_file.insert(0, path)
-
-
     def run_cli(self, args: list, csv_path: Optional[str]) -> None:
-        """
-        Runs the CLI process and updates GUI widgets live.
-        """
+        """Run the CLI process and update GUI widgets live."""
         try:
             process = subprocess.Popen(
                 args,
@@ -370,7 +317,6 @@ class ReverseMXGUI:
                 self.log_text.insert(tk.END, line_clean + "\n")
                 self.log_text.see(tk.END)
 
-                # Détecter début JSON si affiché sur stdout
                 if line_clean.startswith("["):
                     capture_json = True
                 if capture_json:
@@ -379,30 +325,25 @@ class ReverseMXGUI:
             process.stdout.close()
             process.wait()
 
-            # Si on a un CSV sauvegardé
             if csv_path and os.path.exists(csv_path):
                 with open(csv_path, "r", encoding="utf-8") as f:
                     csv_content = f.read()
                     self.result_text.insert(tk.END, csv_content)
                     self.result_text.see(tk.END)
-            # Sinon, on essaie d'afficher le JSON collecté
             elif json_output:
                 pretty_json = "\n".join(json_output)
                 self.result_text.insert(tk.END, pretty_json)
                 self.result_text.see(tk.END)
             else:
-                self.result_text.insert(tk.END, "⚠️ No results to preview.\n")
+                self.result_text.insert(tk.END, "No results to preview.\n")
                 self.result_text.see(tk.END)
 
         except Exception as e:
-            self.log_text.insert(tk.END, f"[ERROR] {str(e)}\n")
+            self.log_text.insert(tk.END, f"[ERROR] {e}\n")
             self.log_text.see(tk.END)
 
-
     def save_results(self) -> None:
-        """
-        Save last results preview to a chosen CSV file.
-        """
+        """Save last results preview to a chosen CSV file."""
         if not self.last_csv_content:
             messagebox.showwarning("Save", "No data to save yet.")
             return
@@ -415,19 +356,16 @@ class ReverseMXGUI:
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(self.last_csv_content)
             messagebox.showinfo("Save", f"Results saved to:\n{save_path}")
+
     def open_settings_window(self):
-        """
-        Open a popup window to edit API keys.
-        """
+        """Open a popup window to edit API keys."""
         settings_win = tk.Toplevel(self.master)
         settings_win.title("API Settings")
 
-        # Champs ViewDNS
         ttk.Label(settings_win, text="ViewDNS API Key:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         entry_viewdns = ttk.Entry(settings_win, width=50)
         entry_viewdns.grid(row=0, column=1, padx=5, pady=5)
 
-        # Champs DomainTools
         ttk.Label(settings_win, text="DomainTools Username:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
         entry_dt_user = ttk.Entry(settings_win, width=50)
         entry_dt_user.grid(row=1, column=1, padx=5, pady=5)
@@ -436,12 +374,11 @@ class ReverseMXGUI:
         entry_dt_key = ttk.Entry(settings_win, width=50, show="*")
         entry_dt_key.grid(row=2, column=1, padx=5, pady=5)
 
-        # Champs WhoisXML
         ttk.Label(settings_win, text="WhoisXML API Key:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
         entry_whoisxml = ttk.Entry(settings_win, width=50, show="*")
         entry_whoisxml.grid(row=3, column=1, padx=5, pady=5)
 
-        # Charger valeurs existantes
+        # Load existing values
         base_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(base_dir, "config", "settings.json")
         if os.path.exists(config_path):
@@ -472,7 +409,7 @@ class ReverseMXGUI:
 
 def main() -> None:
     root = tk.Tk()
-    app = ReverseMXGUI(root)
+    ReverseMXGUI(root)
     root.mainloop()
 
 

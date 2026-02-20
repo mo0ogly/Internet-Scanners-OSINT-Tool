@@ -3,11 +3,35 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Linting / formatting cache
+.ruff_cache/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Logs
 *.log
-logs/
+logs/*
+!logs/.gitkeep
 
-# Configs / secrets
+# Environment / secrets
+.env
+.env.*
 config/settings.json
 config/*.swp
 
@@ -18,8 +42,10 @@ results/*.csv
 # Cloned data repos
 internet-scanners/
 
-# VSCode files
+# IDE files
 .vscode/
+.idea/
+*.code-workspace
 
 # OS files
 .DS_Store

@@ -33,24 +33,26 @@ Features include:
 ────────────────────────────────────────────
 """
 
-import os
-import re
+import argparse
 import csv
 import json
+import logging
+import os
+import re
 import socket
 import subprocess
-import logging
 import sys
-import argparse
-import time
 import threading
-from typing import List, Dict, Optional, Any
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import requests
 from ipwhois import IPWhois
 from ipwhois.exceptions import IPDefinedError
-from concurrent.futures import ThreadPoolExecutor, as_completed
- 
+
+
 class InternetScannerExtractor:
     def __init__(
         self,
@@ -63,7 +65,7 @@ class InternetScannerExtractor:
         use_multithreading: bool = True,
         enable_abuseipdb: bool = False,
         throttle: float = 0.0
-        ):
+    ):
         self.repo_url = repo_url
         self.repo_path = repo_path
         self.abuseipdb_api_key = abuseipdb_api_key
@@ -82,10 +84,8 @@ class InternetScannerExtractor:
             r"((?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4}(?:/\d{1,3})?)"
         )
         self.logger = self._setup_logger(log_level)
-        
-    def _setup_logger(self, level: int) -> logging.Logger:
-        
 
+    def _setup_logger(self, level: int) -> logging.Logger:
         logs_dir = "logs"
         os.makedirs(logs_dir, exist_ok=True)
         log_path = os.path.join(logs_dir, "scanner.log")
@@ -108,7 +108,6 @@ class InternetScannerExtractor:
 
         return logger
 
-
     def git_clone_or_pull(self) -> None:
         if os.path.exists(self.repo_path):
             self.logger.info("Updating repo...")
@@ -121,7 +120,7 @@ class InternetScannerExtractor:
         try:
             result = socket.gethostbyaddr(ip)
             return result[0]
-        except Exception:
+        except (socket.herror, socket.gaierror, socket.timeout, OSError):
             return None
 
     def abuseipdb_lookup(self, ip: str) -> Dict[str, Any]:
@@ -130,7 +129,7 @@ class InternetScannerExtractor:
             return {}
 
         if self.abuseipdb_disabled_due_to_errors:
-            self.logger.warning(f"AbuseIPDB lookups disabled due to previous errors.")
+            self.logger.warning("AbuseIPDB lookups disabled due to previous errors.")
             return {}
 
         if not self.abuseipdb_api_key:
@@ -166,7 +165,7 @@ class InternetScannerExtractor:
             elif response.status_code == 429:
                 self.logger.warning(
                     f"AbuseIPDB returned 429 Too Many Requests for {ip}. "
-                    f"Disabling further calls this run."
+                    "Disabling further calls this run."
                 )
                 self.abuseipdb_disabled_due_to_errors = True
                 return {}
@@ -174,7 +173,7 @@ class InternetScannerExtractor:
                 self.logger.warning(f"AbuseIPDB returned status {response.status_code} for {ip}")
                 return {}
         except Exception as e:
-            self.logger.error(f"Error contacting AbuseIPDB for {ip}: {e}")
+            self.logger.error(f"Error contacting AbuseIPDB for {ip}: {type(e).__name__}")
             self.abuseipdb_disabled_due_to_errors = True
             return {}
 
@@ -188,7 +187,6 @@ class InternetScannerExtractor:
 
         ptr = self.reverse_dns(ip_clean)
         self.logger.info(f"[{thread_name}] PTR for {ip_clean}: {ptr}")
-
 
         enrichment = {
             "ptr_record": ptr
@@ -259,7 +257,6 @@ class InternetScannerExtractor:
                     owner = file.replace(".txt", "")
 
                 for line in lines:
-                    
                     matches = self.IPV4_IPV6_REGEX.findall(line)
                     for match in matches:
                         ip_candidate = match[0] or match[1]
@@ -307,19 +304,12 @@ class InternetScannerExtractor:
             json.dump(data, f, indent=2)
         self.logger.info(f"JSON saved: {self.output_json}")
 
-
     def save_csv(self, data: List[Dict[str, Any]]) -> None:
-        """
-        Save enriched data to CSV file.
-
-        Args:
-            data (List[Dict[str, Any]]): List of enriched IP records.
-        """
+        """Save enriched data to CSV file."""
         if not data:
             self.logger.warning("No data to save in CSV.")
             return
 
-        # Ensure the parent directory exists
         os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
 
         fields = list(data[0].keys())
@@ -333,7 +323,6 @@ class InternetScannerExtractor:
             self.logger.info(f"CSV saved: {self.output_csv}")
         except Exception as e:
             self.logger.error(f"Error saving CSV to {self.output_csv}: {e}")
-
 
     def summarize_stats(self, data: List[Dict[str, Any]]) -> None:
         total = len(data)
@@ -357,7 +346,7 @@ class InternetScannerExtractor:
         self.save_json(data)
         self.save_csv(data)
         self.summarize_stats(data)
-        self.logger.info("✅ Extraction and enrichment finished.")
+        self.logger.info("Extraction and enrichment finished.")
 
 
 if __name__ == "__main__":
@@ -370,7 +359,7 @@ if __name__ == "__main__":
     parser.add_argument("--output-csv", default="internet_scanners_enriched.csv")
     parser.add_argument("--abuseipdb-api-key", default=None)
     parser.add_argument("--enable-abuseipdb", action="store_true", help="Enable AbuseIPDB lookups")
-    parser.add_argument("--throttle", type=float, default=0.0, help="Delay in seconds between AbuseIPDB lookups")
+    parser.add_argument("--throttle", type=float, default=0.0, help="Delay between AbuseIPDB lookups")
     parser.add_argument("--no-multithread", action="store_true")
 
     args = parser.parse_args()

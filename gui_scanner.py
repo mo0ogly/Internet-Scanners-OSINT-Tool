@@ -28,7 +28,7 @@ with the AbuseIPDB API to check reputation data.
 
 ────────────────────────────────────────────
 
-OR DEVELOPERS
+FOR DEVELOPERS
 ────────────────────────────────────────────
 Key classes & files:
 - `InternetScannerExtractor`: Core class performing all parsing and enrichment
@@ -58,75 +58,43 @@ Simply run:
 
     python3 gui_scanner.py
 
- 
 ────────────────────────────────────────────
 
 """
 
-
- 
-import tkinter as tk
-from tkinter import scrolledtext, ttk, messagebox, filedialog, font
-import threading
-import queue
-import logging
-from typing import List, Dict, Any
-from datetime import datetime
-import os
 import json
+import logging
+import os
+import queue
+import threading
+import tkinter as tk
+from datetime import datetime
+from tkinter import filedialog, font, messagebox, scrolledtext, ttk
+from typing import Any, Dict, List
 
 from internet_scanner import InternetScannerExtractor
 
 
 class GuiLogger(logging.Handler):
-    """
-    Custom logging handler for Tkinter Text widget.
-    
-    """
+    """Custom logging handler for Tkinter Text widget."""
 
     def __init__(self, text_widget: tk.Text):
-        """
-        Initialize the handler.
-
-        Args:
-            text_widget (tk.Text): Text widget where logs will be displayed.
-        """
         super().__init__()
         self.text_widget = text_widget
 
     def emit(self, record: logging.LogRecord):
-        """
-        Handle a log record.
-
-        Args:
-            record (logging.LogRecord): Log record.
-        """
         msg = self.format(record)
         self.text_widget.after(0, self._append, msg)
 
     def _append(self, msg: str):
-        """
-        Append a message to the Text widget.
-
-        Args:
-            msg (str): Message to append.
-        """
         self.text_widget.insert(tk.END, msg + "\n")
         self.text_widget.see(tk.END)
 
 
 class InternetScannerGUI:
-    """
-    Tkinter-based GUI for Internet Scanners OSINT Tool.
-    """
+    """Tkinter-based GUI for Internet Scanners OSINT Tool."""
 
     def __init__(self, master: tk.Tk):
-        """
-        Initialize the GUI.
-
-        Args:
-            master (tk.Tk): The root Tkinter window.
-        """
         self.master = master
         self.master.title("Internet Scanners OSINT Tool")
 
@@ -150,26 +118,26 @@ class InternetScannerGUI:
         self.extractor = None
 
     def set_styles(self):
-        """
-        Apply styling to the GUI elements.
-        """
+        """Apply styling to the GUI elements."""
         self.master.configure(bg="#f0f0f5")
 
         style = ttk.Style()
         style.configure("TLabel", font=("Segoe UI", 10))
         style.configure("TButton", font=("Segoe UI", 10))
         style.configure("TEntry", font=("Segoe UI", 10))
-        style.configure("TLabelframe.Label", background="#2c3e50", foreground="white",
-                        font=("Segoe UI", 11, "bold"))
+        style.configure(
+            "TLabelframe.Label",
+            background="#2c3e50", foreground="white", font=("Segoe UI", 11, "bold"),
+        )
 
         log_font = font.Font(family="Consolas", size=10)
-        self.log_text.configure(font=log_font, background="#1e1e1e",
-                                foreground="#d4d4d4", insertbackground="white")
+        self.log_text.configure(
+            font=log_font, background="#1e1e1e",
+            foreground="#d4d4d4", insertbackground="white",
+        )
 
     def inject_logger(self):
-        """
-        Configure the logger for GUI display.
-        """
+        """Configure the logger for GUI display."""
         self.logger = logging.getLogger("InternetScannerGUI")
         self.logger.setLevel(logging.DEBUG)
 
@@ -179,9 +147,7 @@ class InternetScannerGUI:
         self.logger.addHandler(gui_handler)
 
     def create_widgets(self):
-        """
-        Create and place all widgets in the GUI.
-        """
+        """Create and place all widgets in the GUI."""
         frm_paths = ttk.LabelFrame(self.master, text="Paths and Filenames")
         frm_paths.pack(fill=tk.X, padx=10, pady=10)
 
@@ -197,11 +163,15 @@ class InternetScannerGUI:
 
         # JSON file
         ttk.Label(frm_paths, text="JSON file name:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(frm_paths, textvariable=self.json_file_var, width=50).grid(row=2, column=1, columnspan=2, padx=5, pady=2)
+        ttk.Entry(frm_paths, textvariable=self.json_file_var, width=50).grid(
+            row=2, column=1, columnspan=2, padx=5, pady=2,
+        )
 
         # CSV file
         ttk.Label(frm_paths, text="CSV file name:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(frm_paths, textvariable=self.csv_file_var, width=50).grid(row=3, column=1, columnspan=2, padx=5, pady=2)
+        ttk.Entry(frm_paths, textvariable=self.csv_file_var, width=50).grid(
+            row=3, column=1, columnspan=2, padx=5, pady=2,
+        )
 
         # Multithreading checkbox
         ttk.Checkbutton(
@@ -218,12 +188,18 @@ class InternetScannerGUI:
         ).grid(row=5, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
 
         # Throttle delay
-        ttk.Label(frm_paths, text="Throttle between AbuseIPDB calls (s):").grid(row=6, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(frm_paths, textvariable=self.throttle_var, width=10).grid(row=6, column=1, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(frm_paths, text="Throttle between AbuseIPDB calls (s):").grid(
+            row=6, column=0, sticky=tk.W, padx=5, pady=2,
+        )
+        ttk.Entry(frm_paths, textvariable=self.throttle_var, width=10).grid(
+            row=6, column=1, sticky=tk.W, padx=5, pady=2,
+        )
 
         # AbuseIPDB API Key
         ttk.Label(frm_paths, text="AbuseIPDB API Key:").grid(row=7, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(frm_paths, textvariable=self.abuseipdb_key_var, width=50, show="*").grid(row=7, column=1, padx=5, pady=2)
+        ttk.Entry(frm_paths, textvariable=self.abuseipdb_key_var, width=50, show="*").grid(
+            row=7, column=1, padx=5, pady=2,
+        )
         ttk.Button(frm_paths, text="Save API Key", command=self.save_api_key).grid(row=7, column=2, padx=5, pady=2)
 
         frm_buttons = ttk.Frame(self.master)
@@ -254,9 +230,7 @@ class InternetScannerGUI:
             self.results_dir_var.set(path)
 
     def save_api_key(self):
-        """
-        Save the AbuseIPDB API key to a config file.
-        """
+        """Save the AbuseIPDB API key to a config file."""
         key = self.abuseipdb_key_var.get().strip()
         if not key:
             messagebox.showwarning("Save Key", "API key is empty.")
@@ -274,9 +248,7 @@ class InternetScannerGUI:
             messagebox.showerror("Save Key", f"Error saving key: {e}")
 
     def load_api_key(self):
-        """
-        Load the AbuseIPDB API key from config if available.
-        """
+        """Load the AbuseIPDB API key from config if available."""
         config_path = os.path.join("config", "settings.json")
         if os.path.exists(config_path):
             try:
@@ -297,7 +269,6 @@ class InternetScannerGUI:
         t.start()
 
     def create_extractor(self):
-        logs_dir = self.logs_dir_var.get()
         results_dir = self.results_dir_var.get()
         json_file = self.json_file_var.get()
         csv_file = self.csv_file_var.get()
@@ -351,17 +322,16 @@ class InternetScannerGUI:
         self.create_extractor()
         try:
             json_path = self.extractor.output_json
-            csv_path = self.extractor.output_csv
 
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            self.extractor.save_csv(data, csv_path)
+            self.extractor.save_csv(data)
             self.update_stats(data)
 
             messagebox.showinfo(
                 "Export Complete",
-                f"CSV saved at:\n{csv_path}"
+                f"CSV saved at:\n{self.extractor.output_csv}"
             )
 
         except Exception as e:
@@ -375,13 +345,16 @@ class InternetScannerGUI:
             1 for item in data
             if item.get("abuseConfidenceScore", 0) and item["abuseConfidenceScore"] > 0
         )
-        stats_msg = f"Total IPs: {total} | IPv4: {ipv4_count} | IPv6: {ipv6_count} | Reported in AbuseIPDB: {abuse_count}"
+        stats_msg = (
+            f"Total IPs: {total} | IPv4: {ipv4_count} | "
+            f"IPv6: {ipv6_count} | Reported in AbuseIPDB: {abuse_count}"
+        )
         self.stats_var.set(stats_msg)
 
 
 def main():
     root = tk.Tk()
-    app = InternetScannerGUI(root)
+    InternetScannerGUI(root)
     root.mainloop()
 
 

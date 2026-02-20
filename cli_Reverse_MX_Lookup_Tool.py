@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 ──────────────────────────────────────────────
  Reverse MX Lookup Tool - CLI Version
@@ -57,28 +60,28 @@ Command-line Arguments:
 
 Examples:
     # Single domain MX lookup:
-    python3 cli_Reverse_MX_Lookup_Tool.py \
-        --mode mx_lookup \
+    python3 cli_Reverse_MX_Lookup_Tool.py \\
+        --mode mx_lookup \\
         --target google.fr
 
     # Single reverse MX lookup:
-    python3 cli_Reverse_MX_Lookup_Tool.py \
-        --mode reverse_mx \
-        --target aspmx.l.google.com \
+    python3 cli_Reverse_MX_Lookup_Tool.py \\
+        --mode reverse_mx \\
+        --target aspmx.l.google.com \\
         --provider ViewDNS
 
     # Batch reverse MX lookups from file:
-    python3 cli_Reverse_MX_Lookup_Tool.py \
-        --mode reverse_mx \
-        --targets-file mx_targets.txt \
-        --provider DomainTools \
-        --throttle 1.0 \
+    python3 cli_Reverse_MX_Lookup_Tool.py \\
+        --mode reverse_mx \\
+        --targets-file mx_targets.txt \\
+        --provider DomainTools \\
+        --throttle 1.0 \\
         --export-csv results/reverse_mx.csv
 
     # Disable multithreading:
-    python3 cli_Reverse_MX_Lookup_Tool.py \
-        --mode mx_lookup \
-        --target example.com \
+    python3 cli_Reverse_MX_Lookup_Tool.py \\
+        --mode mx_lookup \\
+        --target example.com \\
         --no-multithread
 
 Log Output:
@@ -87,31 +90,24 @@ Log Output:
 
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
- 
-import os
-import re
+import argparse
 import csv
 import json
 import logging
+import os
 import sys
-import argparse
-import time
-from typing import List, Dict, Optional 
-from datetime import datetime
-import requests
- 
- 
-import dns.resolver
-from concurrent.futures import ThreadPoolExecutor
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import dns.resolver
+import requests
+
 
 class ReverseMXLookup:
-    """
-    Perform MX lookups or Reverse MX lookups.
-    """
+    """Perform MX lookups or Reverse MX lookups."""
 
     def __init__(
         self,
@@ -122,7 +118,6 @@ class ReverseMXLookup:
         multithread: bool = True,
         export_csv: Optional[str] = None
     ):
-        
         self.mode = mode
         self.target = target
         self.provider = provider
@@ -136,8 +131,8 @@ class ReverseMXLookup:
         logger = logging.getLogger("ReverseMXLookup")
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+            "%(asctime)s | %(levelname)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
         )
         os.makedirs("logs", exist_ok=True)
         fh = logging.FileHandler("logs/reverse_mx_tool.log", encoding="utf-8")
@@ -151,38 +146,27 @@ class ReverseMXLookup:
         return logger
 
     def run(self) -> List[Dict[str, str]]:
-        """
-        Main entry point for running lookups.
-
-        Depending on the chosen mode and the number of targets, this method
-        runs lookups either in single-threaded or multi-threaded fashion.
-
-        Returns:
-            List[Dict[str, str]]: A list of enrichment records collected from lookups.
-        """
-
+        """Main entry point for running lookups."""
         self.logger.info(f"Running in mode: {self.mode}")
         self.logger.info(f"Target: {self.target}")
         self.logger.info(f"Provider: {self.provider}")
         self.logger.info(f"Multithreading: {self.multithread}")
         self.logger.info(f"Throttle between requests: {self.throttle}s")
 
-        results = []
-
         # Validate mode
         if self.mode not in ["mx_lookup", "reverse_mx"]:
-            self.logger.error(f"🛑 Unknown mode: {self.mode}. Must be either 'mx_lookup' or 'reverse_mx'.")
+            self.logger.error(f"Unknown mode: {self.mode}. Must be 'mx_lookup' or 'reverse_mx'.")
             return []
 
         # Validate target presence
         if not self.target:
-            self.logger.error("🛑 No target specified. Exiting run.")
+            self.logger.error("No target specified. Exiting run.")
             return []
 
         # Multi-threaded execution
         if self.multithread and isinstance(self.target, list) and len(self.target) > 1:
-            self.logger.info("→ Running multi-threaded lookups.")
-            all_records = []
+            self.logger.info("Running multi-threaded lookups.")
+            all_records: List[Dict[str, str]] = []
 
             with ThreadPoolExecutor() as executor:
                 futures = []
@@ -203,7 +187,7 @@ class ReverseMXLookup:
                         if records:
                             all_records.extend(records)
                     except Exception as e:
-                        self.logger.exception(f"‼️ Exception raised in thread: {e}")
+                        self.logger.exception(f"Exception raised in thread: {e}")
 
             results = all_records
 
@@ -213,7 +197,7 @@ class ReverseMXLookup:
             target_list = self.target if isinstance(self.target, list) else [self.target]
 
             for t in target_list:
-                self.logger.info(f"→ Processing target: {t}")
+                self.logger.info(f"Processing target: {t}")
                 try:
                     if self.mode == "mx_lookup":
                         recs = self.mx_lookup(t)
@@ -224,7 +208,7 @@ class ReverseMXLookup:
                         all_records.extend(recs)
 
                 except Exception as e:
-                    self.logger.exception(f"‼️ Error while processing target {t}: {e}")
+                    self.logger.exception(f"Error while processing target {t}: {e}")
 
             results = all_records
 
@@ -233,33 +217,14 @@ class ReverseMXLookup:
             self.save_csv(results, self.export_csv)
         else:
             if not self.export_csv:
-                self.logger.debug("ℹ️ No CSV export requested.")
+                self.logger.debug("No CSV export requested.")
             elif not results:
-                self.logger.warning("⚠️ No results available to export.")
+                self.logger.warning("No results available to export.")
 
         return results
 
-
     def _thread_wrapper(self, func, *args, **kwargs):
-        """
-        Wrapper to execute a given function inside a thread, with detailed logging.
-
-        - Logs the thread name and function being called.
-        - Logs all arguments passed to the function for traceability.
-        - Measures and logs execution time.
-        - Catches any exception raised during execution and logs
-        the full traceback, ensuring the thread does not silently fail.
-
-        Args:
-            func (Callable): The function to execute in the thread.
-            *args: Positional arguments for the function.
-            **kwargs: Keyword arguments for the function.
-
-        Returns:
-            Any: The return value of the function, or None if an exception occurred.
-        """
-        
-
+        """Wrapper to execute a function inside a thread with logging."""
         thread_name = threading.current_thread().name
         args_repr = ", ".join(repr(a) for a in args)
         kwargs_repr = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
@@ -269,7 +234,7 @@ class ReverseMXLookup:
         call_signature += ")"
 
         self.logger.debug(
-            f"→ [Thread {thread_name}] Starting execution: {call_signature}"
+            f"[Thread {thread_name}] Starting execution: {call_signature}"
         )
 
         start_time = time.time()
@@ -278,41 +243,27 @@ class ReverseMXLookup:
             result = func(*args, **kwargs)
             elapsed = time.time() - start_time
             self.logger.debug(
-                f"→ [Thread {thread_name}] Finished {func.__name__} in {elapsed:.3f}s"
+                f"[Thread {thread_name}] Finished {func.__name__} in {elapsed:.3f}s"
             )
             return result
 
         except Exception as e:
             elapsed = time.time() - start_time
             self.logger.exception(
-                f"‼️ Exception in thread {thread_name} during {func.__name__} "
+                f"Exception in thread {thread_name} during {func.__name__} "
                 f"after {elapsed:.3f}s: {e}"
             )
             return None
 
-    
     def mx_lookup(self, domain: str) -> List[Dict[str, str]]:
-        """
-        Perform a standard MX lookup for a domain name, retrieving all mail 
-        exchanger hosts (MX records) associated with the domain.
-
-        Args:
-            domain (str): The domain to look up (e.g. "google.fr").
-
-        Returns:
-            List[Dict[str, str]]: A list of dictionaries, each containing:
-                - 'domain': the queried domain
-                - 'mx_host': an MX host found for that domain
-        """
-
+        """Perform a standard MX lookup for a domain name."""
         result = []
 
         self.logger.info(f"Starting MX lookup for domain: {domain}")
 
         try:
-            # Perform DNS MX query
             answers = dns.resolver.resolve(domain, 'MX', lifetime=10.0)
-            
+
             if not answers:
                 self.logger.warning(f"No MX records found for {domain}.")
             else:
@@ -343,24 +294,9 @@ class ReverseMXLookup:
             self.logger.info(f"MX lookup complete for {domain}. No records found.")
 
         return result
-    
+
     def reverse_mx_lookup(self, mx_host: str, provider: str) -> List[Dict[str, str]]:
-        """
-        Perform a reverse MX lookup using ViewDNS, DomainTools, or WhoisXML APIs.
-
-        Args:
-            mx_host (str): The MX host to look up (e.g. 'aspmx.l.google.com').
-            provider (str): The provider to use ('ViewDNS', 'DomainTools', 'WhoisXML').
-
-        Returns:
-            List[Dict[str, str]]: List of dictionaries with:
-                - 'mx_host': MX host
-                - 'domain': domain sharing the same MX
-
-        The method logs all activity, handles network and JSON errors,
-        and ensures no exception leaks outside. If the provider or API
-        credentials are missing, it logs errors and returns an empty list.
-        """
+        """Perform a reverse MX lookup using ViewDNS, DomainTools, or WhoisXML APIs."""
         results = []
 
         if not provider:
@@ -376,7 +312,7 @@ class ReverseMXLookup:
                     self.logger.error("Missing ViewDNS API key in config/settings.json.")
                     return []
 
-                url = f"https://api.viewdns.info/reversemx/"
+                url = "https://api.viewdns.info/reversemx/"
                 params = {
                     "host": mx_host,
                     "apikey": api_key,
@@ -455,13 +391,19 @@ class ReverseMXLookup:
                 return []
 
         except requests.HTTPError as e:
-            self.logger.error(f"HTTP error for provider {provider} and host {mx_host}: {e}")
+            status = getattr(e.response, 'status_code', 'unknown')
+            self.logger.error(
+                f"HTTP error for provider {provider} and host {mx_host}: status {status}"
+            )
         except requests.RequestException as e:
-            self.logger.error(f"Network error calling {provider} for {mx_host}: {e}")
+            self.logger.error(f"Network error calling {provider} for {mx_host}: {type(e).__name__}")
         except json.JSONDecodeError as e:
-            self.logger.error(f"Invalid JSON from {provider} for {mx_host}: {e}")
+            self.logger.error(f"Invalid JSON from {provider} for {mx_host}: {e.msg}")
         except Exception as e:
-            self.logger.exception(f"Unexpected error in reverse MX lookup via {provider} for {mx_host}: {e}")
+            self.logger.error(
+                f"Unexpected error in reverse MX lookup via {provider} for {mx_host}: "
+                f"{type(e).__name__}: {e}"
+            )
 
         if self.throttle > 0:
             self.logger.debug(f"Sleeping for throttle of {self.throttle} seconds.")
@@ -471,19 +413,9 @@ class ReverseMXLookup:
             self.logger.info(f"No results found for reverse MX on {mx_host} with provider {provider}.")
 
         return results
- 
-    
+
     def save_csv(self, data: List[Dict[str, str]], path: str) -> None:
-        """
-        Save results to a CSV file safely.
-
-        Args:
-            data (List[Dict[str, str]]): Data to write.
-            path (str): Path to CSV file.
-
-        Returns:
-            None
-        """
+        """Save results to a CSV file safely."""
         if not data:
             self.logger.warning("No data to save. CSV export aborted.")
             return
@@ -511,18 +443,8 @@ class ReverseMXLookup:
             self.logger.exception(f"Unexpected error while saving CSV file {path}: {e}")
 
     def load_api_keys(self) -> dict:
-        """
-        Load API keys from config/settings.json safely.
-
-        The path is resolved relative to the current script location,
-        not the current working directory.
-
-        Returns:
-            dict: Dictionary with API keys, or empty dict if file
-                missing, empty, or malformed.
-        """
+        """Load API keys from config/settings.json safely."""
         try:
-            # Résout le chemin absolu du dossier du script
             base_dir = os.path.dirname(os.path.abspath(__file__))
             config_path = os.path.join(base_dir, "config", "settings.json")
 
@@ -546,7 +468,7 @@ class ReverseMXLookup:
         except json.JSONDecodeError as e:
             self.logger.error(f"Invalid JSON in config/settings.json: {e}")
         except PermissionError:
-            self.logger.error(f"Permission denied when reading config/settings.json.")
+            self.logger.error("Permission denied when reading config/settings.json.")
         except OSError as e:
             self.logger.error(f"OS error reading config/settings.json: {e}")
         except Exception as e:
@@ -579,9 +501,9 @@ def main() -> None:
     parser.add_argument("--export-csv",
                         help="Path to CSV file for export.")
 
-    args, unknown = parser.parse_known_args()
+    args = parser.parse_args()
 
-    # Blindage
+    # Validation
     errors = []
     if not args.mode:
         errors.append("--mode is required.")
@@ -596,13 +518,12 @@ def main() -> None:
         errors.append("--provider is required in reverse_mx mode.")
 
     if errors:
-        print("🛑 ERROR: Missing or invalid arguments:")
+        print("ERROR: Missing or invalid arguments:")
         for err in errors:
             print("  - " + err)
         print("\nUse --help for usage instructions.")
         sys.exit(1)
 
-    # Préparer la liste des cibles
     targets: List[str] = []
     if args.target:
         targets = [args.target.strip()]
@@ -619,14 +540,14 @@ def main() -> None:
             provider=args.provider,
             throttle=args.throttle,
             multithread=not args.no_multithread,
-            export_csv=None  # Pas d'export intermédiaire
+            export_csv=None
         )
 
         records = lookup.run()
         if records:
             all_records.extend(records)
 
-    # Export global
+    # Global export
     if args.export_csv and all_records:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
         csv_path = f"{timestamp}_{os.path.basename(args.export_csv)}"
@@ -638,12 +559,11 @@ def main() -> None:
             writer.writeheader()
             writer.writerows(all_records)
 
-        print(f"✅ All results saved to CSV → {csv_path}")
+        print(f"All results saved to CSV: {csv_path}")
     elif not all_records:
-        print("ℹ️ No results found.")
+        print("No results found.")
     else:
         print(json.dumps(all_records, indent=2))
-
 
 
 if __name__ == "__main__":
