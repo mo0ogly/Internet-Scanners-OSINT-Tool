@@ -64,10 +64,12 @@ class InternetScannerExtractor:
         log_level=logging.INFO,
         use_multithreading: bool = True,
         enable_abuseipdb: bool = False,
-        throttle: float = 0.0
+        throttle: float = 0.0,
+        input_file: Optional[str] = None
     ):
         self.repo_url = repo_url
         self.repo_path = repo_path
+        self.input_file = input_file
         self.abuseipdb_api_key = abuseipdb_api_key
         self.use_multithreading = use_multithreading
         self.enable_abuseipdb = enable_abuseipdb
@@ -225,6 +227,56 @@ class InternetScannerExtractor:
 
         return enrichment
 
+    def parse_input_file(self, filepath: str) -> List[Dict[str, Any]]:
+        """Parse a single file containing one IP/CIDR per line."""
+        result = []
+        self.logger.info(f"Parsing input file: {filepath}")
+
+        with open(filepath, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        ips: List[str] = []
+        owner = os.path.splitext(os.path.basename(filepath))[0]
+
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            matches = self.IPV4_IPV6_REGEX.findall(line)
+            for match in matches:
+                ip_candidate = match[0] or match[1]
+                if ip_candidate:
+                    ips.append(ip_candidate.strip())
+
+        self.logger.info(f"Found {len(ips)} IPs in {filepath}")
+        result.extend(self._enrich_ips(ips, owner))
+        return result
+
+    def _enrich_ips(self, ips: List[str], owner: str) -> List[Dict[str, Any]]:
+        """Enrich a list of IPs with PTR, ASN, and optional AbuseIPDB data."""
+        records = []
+
+        if self.use_multithreading and ips:
+            self.logger.info(f"Processing {len(ips)} IPs in multithread mode")
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                future_map = {
+                    executor.submit(self.enrich_ip, ip): ip
+                    for ip in ips
+                }
+                for future in as_completed(future_map):
+                    ip = future_map[future]
+                    try:
+                        enrichment = future.result()
+                        records.append({"owner": owner, "ip_or_cidr": ip, **enrichment})
+                    except Exception as e:
+                        self.logger.error(f"Error processing {ip}: {e}")
+        else:
+            for ip in ips:
+                enrichment = self.enrich_ip(ip)
+                records.append({"owner": owner, "ip_or_cidr": ip, **enrichment})
+
+        return records
+
     def parse_files(self) -> List[Dict[str, Any]]:
         result = []
 
@@ -263,38 +315,7 @@ class InternetScannerExtractor:
                         if ip_candidate:
                             ips.append(ip_candidate.strip())
 
-                records = []
-
-                if self.use_multithreading and ips:
-                    self.logger.info(f"Processing {len(ips)} IPs in multithread mode")
-                    with ThreadPoolExecutor(max_workers=10) as executor:
-                        future_map = {
-                            executor.submit(self.enrich_ip, ip): ip
-                            for ip in ips
-                        }
-                        for future in as_completed(future_map):
-                            ip = future_map[future]
-                            try:
-                                enrichment = future.result()
-                                record = {
-                                    "owner": owner,
-                                    "ip_or_cidr": ip,
-                                    **enrichment
-                                }
-                                records.append(record)
-                            except Exception as e:
-                                self.logger.error(f"Error processing {ip}: {e}")
-                else:
-                    for ip in ips:
-                        enrichment = self.enrich_ip(ip)
-                        record = {
-                            "owner": owner,
-                            "ip_or_cidr": ip,
-                            **enrichment
-                        }
-                        records.append(record)
-
-                result.extend(records)
+                result.extend(self._enrich_ips(ips, owner))
 
         return result
 
@@ -341,8 +362,13 @@ class InternetScannerExtractor:
         self.logger.info(
             f"Running with multithreading: {self.use_multithreading}"
         )
-        self.git_clone_or_pull()
-        data = self.parse_files()
+        if self.input_file:
+            self.logger.info(f"Input mode: local file ({self.input_file})")
+            data = self.parse_input_file(self.input_file)
+        else:
+            self.logger.info(f"Input mode: git repo ({self.repo_url})")
+            self.git_clone_or_pull()
+            data = self.parse_files()
         self.save_json(data)
         self.save_csv(data)
         self.summarize_stats(data)
@@ -361,6 +387,7 @@ if __name__ == "__main__":
     parser.add_argument("--enable-abuseipdb", action="store_true", help="Enable AbuseIPDB lookups")
     parser.add_argument("--throttle", type=float, default=0.0, help="Delay between AbuseIPDB lookups")
     parser.add_argument("--no-multithread", action="store_true")
+    parser.add_argument("--input-file", default=None, help="Local file with IPs (one per line), skips git clone")
 
     args = parser.parse_args()
 
@@ -377,7 +404,8 @@ if __name__ == "__main__":
         enable_abuseipdb=args.enable_abuseipdb,
         throttle=args.throttle,
         log_level=logging.DEBUG,
-        use_multithreading=not args.no_multithread
+        use_multithreading=not args.no_multithread,
+        input_file=args.input_file
     )
 
     extractor.run()

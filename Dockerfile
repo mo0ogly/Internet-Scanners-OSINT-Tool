@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 RUN useradd --create-home --no-log-init appuser
 
-COPY --chown=appuser:appuser internet_scanner.py cli_Reverse_MX_Lookup_Tool.py ./
+COPY --chown=appuser:appuser internet_scanner.py cli_Reverse_MX_Lookup_Tool.py menu.py ./
 COPY --chown=appuser:appuser docker-entrypoint.sh ./
 COPY --chown=appuser:appuser samples/ samples/
 

@@ -7,20 +7,24 @@ show_help() {
     echo "============================================"
     echo ""
     echo "Usage:"
-    echo "  docker run --rm -v \"\$(pwd)/results:/app/results\" internet-scanners-osint <command> [options]"
+    echo "  docker run --rm -it -v \"\$(pwd)/results:/app/results\" internet-scanners-osint <command>"
     echo ""
     echo "Commands:"
-    echo "  scanner          Run Internet Scanner extraction & enrichment"
-    echo "  reverse-mx       Run Reverse MX Lookup Tool"
+    echo "  menu             Interactive menu (recommended)"
+    echo "  scanner --run    Run Internet Scanner (direct mode)"
+    echo "  reverse-mx       Run Reverse MX Lookup Tool (direct mode)"
     echo "  shell            Open an interactive shell"
     echo ""
-    echo "Examples:"
-    echo "  # Scanner with default repo (MDMCK10/internet-scanners)"
+    echo "Quick start:"
+    echo "  docker run --rm -it -v \"\$(pwd)/results:/app/results\" internet-scanners-osint menu"
+    echo ""
+    echo "Direct mode examples:"
+    echo "  # Scanner from Git repo"
     echo "  docker run --rm -v \"\$(pwd)/results:/app/results\" internet-scanners-osint scanner --run"
     echo ""
-    echo "  # Scanner with custom repo"
-    echo "  docker run --rm -v \"\$(pwd)/results:/app/results\" internet-scanners-osint scanner --run \\"
-    echo "      --repo-url https://github.com/user/repo.git"
+    echo "  # Scanner from local IP file"
+    echo "  docker run --rm -v \"\$(pwd)/results:/app/results\" -v \"\$(pwd)/ips.txt:/app/input.txt\" \\"
+    echo "      internet-scanners-osint scanner --run --input-file /app/input.txt"
     echo ""
     echo "  # Scanner with AbuseIPDB"
     echo "  docker run --rm -v \"\$(pwd)/results:/app/results\" internet-scanners-osint scanner --run \\"
@@ -33,9 +37,6 @@ show_help() {
     echo "  docker run --rm internet-scanners-osint reverse-mx --mode reverse_mx \\"
     echo "      --target aspmx.l.google.com --provider ViewDNS"
     echo ""
-    echo "  # Interactive shell"
-    echo "  docker run --rm -it internet-scanners-osint shell"
-    echo ""
 }
 
 show_scanner_help() {
@@ -43,31 +44,33 @@ show_scanner_help() {
     echo "  Internet Scanner — Options"
     echo "============================================"
     echo ""
-    echo "  This tool clones a Git repo containing scanner IP lists,"
-    echo "  extracts IPv4/IPv6 addresses, and enriches them (PTR, ASN, AbuseIPDB)."
-    echo ""
-    echo "  Default repo: https://github.com/MDMCK10/internet-scanners.git"
+    echo "  Clones a Git repo or reads a local file containing IPs,"
+    echo "  extracts IPv4/IPv6, and enriches them (PTR, ASN, AbuseIPDB)."
     echo ""
     echo "Usage:"
-    echo "  docker run --rm -v \"\$(pwd)/results:/app/results\" internet-scanners-osint scanner --run [options]"
+    echo "  ... internet-scanners-osint scanner --run [options]"
     echo ""
     echo "Options:"
-    echo "  --run                  Required. Confirms you want to start the scan."
+    echo "  --run                  Required. Confirms you want to start."
     echo "  --repo-url URL         Git repo to clone (default: MDMCK10/internet-scanners)"
-    echo "  --repo-path PATH       Local path for clone (default: internet-scanners)"
-    echo "  --output-json FILE     JSON output filename (default: internet_scanners_enriched.json)"
-    echo "  --output-csv FILE      CSV output filename (default: internet_scanners_enriched.csv)"
+    echo "  --input-file PATH      Local file with IPs (one per line), skips git clone"
+    echo "  --output-json FILE     JSON output filename"
+    echo "  --output-csv FILE      CSV output filename"
     echo "  --enable-abuseipdb     Enable AbuseIPDB lookups"
     echo "  --abuseipdb-api-key K  AbuseIPDB API key"
     echo "  --throttle SECONDS     Delay between API calls (default: 0.0)"
     echo "  --no-multithread       Disable multithreading"
     echo ""
+    echo "Tip: use 'menu' for an interactive guided experience."
+    echo ""
 }
 
 case "${1:-}" in
+    menu)
+        exec python3 menu.py
+        ;;
     scanner)
         shift
-        # Require --run to actually start
         has_run=false
         args=""
         for arg in "$@"; do
