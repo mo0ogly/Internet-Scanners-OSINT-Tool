@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internet Scanners & Reverse MX — OSINT Toolkit</title>
+    <meta name="description" content="Python OSINT toolkit for extracting, enriching, and analyzing internet scanner IPs and email infrastructure.">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --orange: #d29922;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        header p { color: var(--muted); font-size: 1.05rem; }
+        .badges { margin: 1rem 0; }
+        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600; margin: 0.2rem; }
+        .badge-green { background: var(--green); color: #000; }
+        .badge-blue { background: var(--accent); color: #000; }
+        .badge-orange { background: var(--orange); color: #000; }
+        h2 { font-size: 1.4rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1rem; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+        .card:hover { border-color: var(--accent); }
+        .card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .card p { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.75rem; }
+        .card ul { color: var(--muted); font-size: 0.9rem; margin-left: 1.2rem; margin-bottom: 1rem; }
+        .card ul li { margin-bottom: 0.3rem; }
+        .tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; margin: 0.15rem; }
+        .tag-cli { background: #21262d; color: var(--green); }
+        .tag-gui { background: #21262d; color: var(--orange); }
+        pre { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.9rem; margin: 1rem 0; }
+        code { color: var(--accent); }
+        .screenshots { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+        .screenshots img { width: 100%; border-radius: 6px; border: 1px solid var(--border); }
+        .screenshots em { display: block; text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; }
+        .download-box { background: #1a2332; border: 2px solid var(--accent); border-radius: 8px; padding: 1.5rem; text-align: center; margin: 2rem 0; }
+        .download-box a { display: inline-block; padding: 0.75rem 2rem; background: var(--accent); color: #000; border-radius: 8px; font-weight: 700; font-size: 1.1rem; text-decoration: none; }
+        .download-box a:hover { background: #79c0ff; }
+        .download-box p { color: var(--muted); margin-top: 0.75rem; font-size: 0.9rem; }
+        footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+        @media (max-width: 600px) {
+            .card-grid { grid-template-columns: 1fr; }
+            .screenshots { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <h1>Internet Scanners & Reverse MX</h1>
+        <p>OSINT Toolkit for Cybersecurity Analysts</p>
+        <p style="margin-top: 0.5rem;"><strong>Fabrice Pizzi</strong> &mdash; <a href="https://www.linkedin.com/in/fpizzi/" style="color: var(--accent); text-decoration: none;">LinkedIn</a></p>
+        <div class="badges">
+            <span class="badge badge-green">MIT License</span>
+            <span class="badge badge-blue">Python 3.8+</span>
+            <span class="badge badge-orange">CLI + GUI</span>
+        </div>
+    </header>
+
+    <h2>Two Tools, One Repository</h2>
+
+    <div class="card-grid">
+        <div class="card">
+            <h3>Internet Scanners Extractor</h3>
+            <p>Extract and enrich IP addresses from known internet scanning projects.</p>
+            <ul>
+                <li>IPv4/IPv6 detection from text files</li>
+                <li>Reverse DNS (PTR) lookups</li>
+                <li>ASN enrichment via IPWhois</li>
+                <li>AbuseIPDB reputation (optional)</li>
+                <li>Multithreaded processing</li>
+                <li>JSON + CSV timestamped exports</li>
+            </ul>
+            <span class="tag tag-cli">CLI</span>
+            <span class="tag tag-gui">GUI</span>
+        </div>
+        <div class="card">
+            <h3>Reverse MX Lookup Tool</h3>
+            <p>Analyze email infrastructure and discover domains sharing mail servers.</p>
+            <ul>
+                <li>MX record lookups</li>
+                <li>Reverse MX via ViewDNS, DomainTools, WhoisXML</li>
+                <li>Single target or batch file input</li>
+                <li>CSV export of results</li>
+                <li>API key management</li>
+                <li>Configurable throttling</li>
+            </ul>
+            <span class="tag tag-cli">CLI</span>
+            <span class="tag tag-gui">GUI</span>
+        </div>
+    </div>
+
+    <h2>Quick Start</h2>
+
+    <pre><code>git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
+cd Internet-Scanners-OSINT-Tool
+pip install -r requirements.txt
+
+# Internet Scanner
+python3 internet_scanner.py
+
+# Reverse MX Lookup
+python3 cli_Reverse_MX_Lookup_Tool.py --mode mx_lookup --target example.com
+
+# GUI versions
+python3 gui_scanner.py
+python3 gui_Reverse_MX_Lookup_Tool.py</code></pre>
+
+    <h2>Screenshots</h2>
+
+    <div class="screenshots">
+        <div>
+            <img src="https://raw.githubusercontent.com/mo0ogly/Internet-Scanners-OSINT-Tool/main/docs/screenshot_gui.png" alt="Internet Scanner GUI">
+            <em>Internet Scanner GUI</em>
+        </div>
+        <div>
+            <img src="https://raw.githubusercontent.com/mo0ogly/Internet-Scanners-OSINT-Tool/main/docs/screenshot_gui_2.png" alt="Reverse MX GUI">
+            <em>Reverse MX Lookup GUI</em>
+        </div>
+    </div>
+
+    <h2>Use Cases</h2>
+
+    <div class="card-grid">
+        <div class="card">
+            <h3>Threat Intelligence</h3>
+            <p>Track scanning infrastructure, correlate IPs with ASN/ISP, check reputation via AbuseIPDB, feed enriched data into SIEMs.</p>
+        </div>
+        <div class="card">
+            <h3>Email Infrastructure Analysis</h3>
+            <p>Map email infrastructure, detect shared hosting, discover domains using the same mail servers for phishing investigations.</p>
+        </div>
+    </div>
+
+    <div class="download-box">
+        <a href="https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool/archive/refs/heads/main.zip">Download (ZIP)</a>
+        <p>All source code, samples, and documentation &mdash; no Git required.</p>
+    </div>
+
+    <footer>
+        <p><strong>Fabrice Pizzi</strong> &mdash; <a href="https://github.com/mo0ogly">GitHub</a> &middot; <a href="https://www.linkedin.com/in/fpizzi/">LinkedIn</a></p>
+        <p style="margin-top: 0.5rem;"><a href="https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool">View on GitHub</a> &middot; Also see: <a href="https://mo0ogly.github.io/openclaw-killchain-analysis/">Operation OpenClaw</a></p>
+    </footer>
+
+</div>
+</body>
+</html>

@@ -5,9 +5,18 @@ __pycache__/
 
 # Logs
 *.log
+logs/
 
 # Configs / secrets
 config/settings.json
+config/*.swp
+
+# Results (large data files)
+results/*.json
+results/*.csv
+
+# Cloned data repos
+internet-scanners/
 
 # VSCode files
 .vscode/
@@ -15,3 +24,8 @@ config/settings.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Vim swap files
+*.swp
+*.swo
+*~
