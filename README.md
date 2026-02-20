@@ -34,11 +34,14 @@ docker build -t internet-scanners-osint .
 # Show help (available commands)
 docker run --rm internet-scanners-osint
 
+# Show scanner options
+docker run --rm internet-scanners-osint scanner
+
 # Internet Scanner (results saved to ./results/)
-docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner
+docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner --run
 
 # Internet Scanner with AbuseIPDB
-docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner \
+docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint scanner --run \
     --enable-abuseipdb --abuseipdb-api-key YOUR_KEY --throttle 1.0
 
 # MX Lookup
