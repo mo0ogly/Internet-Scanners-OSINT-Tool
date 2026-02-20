@@ -1,7 +1,9 @@
 # Internet Scanners & Reverse MX — OSINT Toolkit
 
+[![CI](https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)]()
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)]()
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![CLI + GUI](https://img.shields.io/badge/Interface-CLI%20%2B%20GUI-orange.svg)]()
 
 A Python-based OSINT toolkit for cybersecurity analysts, threat hunters, and network defenders. Two tools in one repository:
@@ -21,6 +23,30 @@ Both tools are available as CLI (scriptable, batch-friendly) and Tkinter GUI (in
 git clone https://github.com/mo0ogly/Internet-Scanners-OSINT-Tool.git
 cd Internet-Scanners-OSINT-Tool
 pip install -r requirements.txt
+```
+
+### Docker
+
+```bash
+# Build
+docker build -t internet-scanners-osint .
+
+# Run (results saved to ./results/)
+docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint
+
+# With AbuseIPDB
+docker run --rm -v "$(pwd)/results:/app/results" internet-scanners-osint \
+    --enable-abuseipdb --abuseipdb-api-key YOUR_KEY
+```
+
+### Development
+
+```bash
+pip install -e ".[dev]"
+make test          # pytest with coverage
+make lint          # ruff check
+make lint-fix      # ruff auto-fix
+make docker-build  # build container
 ```
 
 ---
@@ -184,30 +210,40 @@ This file is excluded from version control (`.gitignore`).
 ```
 Internet-Scanners-OSINT-Tool/
 │
-├── README.md                           ← this file
-├── LICENSE                             ← MIT License
-├── requirements.txt                    ← Python dependencies
-├── .gitignore
-│
 ├── internet_scanner.py                 ← Scanner: core extraction & enrichment engine
 ├── gui_scanner.py                      ← Scanner: Tkinter GUI
-│
 ├── cli_Reverse_MX_Lookup_Tool.py       ← Reverse MX: CLI entry point
 ├── gui_Reverse_MX_Lookup_Tool.py       ← Reverse MX: Tkinter GUI
 │
+├── tests/                              ← Unit tests (pytest)
+│   ├── conftest.py
+│   ├── test_internet_scanner.py
+│   ├── test_reverse_mx.py
+│   └── test_gui_scanner.py
+│
 ├── config/                             ← API keys (git-ignored)
 │   └── settings.json
-│
-├── docs/                               ← Screenshots
-│   ├── screenshot_gui.png
-│   └── screenshot_gui_2.png
 │
 ├── samples/                            ← Example input files
 │   ├── domain.txt
 │   └── mx.txt
 │
-├── results/                            ← Output directory (git-ignored)
+├── docs/                               ← Screenshots
 │
+├── .github/
+│   ├── workflows/ci.yml                ← CI: lint + test matrix (3.9, 3.10, 3.12)
+│   ├── workflows/release.yml           ← Auto release on tag push
+│   ├── dependabot.yml                  ← Automated dependency updates
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
+│
+├── pyproject.toml                      ← Project metadata & build config
+├── requirements.txt                    ← Runtime dependencies
+├── Makefile                            ← Dev shortcuts (install, test, lint, docker)
+├── Dockerfile                          ← Container build
+├── .pre-commit-config.yaml             ← Pre-commit hooks (ruff)
+│
+├── results/                            ← Output directory (git-ignored)
 └── logs/                               ← Log files (git-ignored)
 ```
 
@@ -237,7 +273,7 @@ MDMCK10/internet-scanners (GitHub)
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.9+
 - Git (for cloning upstream data)
 - **Tkinter** (for GUI — install on Linux: `sudo apt install python3-tk`)
 

@@ -390,15 +390,18 @@ class ReverseMXGUI:
                 entry_whoisxml.insert(0, data.get("whoisxml_api_key", ""))
 
         def save_settings():
-            settings = {
-                "viewdns_api_key": entry_viewdns.get().strip(),
-                "domaintools_api_user": entry_dt_user.get().strip(),
-                "domaintools_api_key": entry_dt_key.get().strip(),
-                "whoisxml_api_key": entry_whoisxml.get().strip()
-            }
             os.makedirs("config", exist_ok=True)
+            existing = {}
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            existing["viewdns_api_key"] = entry_viewdns.get().strip()
+            existing["domaintools_api_user"] = entry_dt_user.get().strip()
+            existing["domaintools_api_key"] = entry_dt_key.get().strip()
+            existing["whoisxml_api_key"] = entry_whoisxml.get().strip()
             with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=4)
+                json.dump(existing, f, indent=4)
+            os.chmod(config_path, 0o600)
             messagebox.showinfo("Settings", "API keys saved successfully.")
             settings_win.destroy()
 

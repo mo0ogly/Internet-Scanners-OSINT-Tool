@@ -230,7 +230,7 @@ class InternetScannerGUI:
             self.results_dir_var.set(path)
 
     def save_api_key(self):
-        """Save the AbuseIPDB API key to a config file."""
+        """Save the AbuseIPDB API key to a config file, preserving other keys."""
         key = self.abuseipdb_key_var.get().strip()
         if not key:
             messagebox.showwarning("Save Key", "API key is empty.")
@@ -240,8 +240,13 @@ class InternetScannerGUI:
         config_path = os.path.join("config", "settings.json")
 
         try:
+            existing = {}
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            existing["abuseipdb_api_key"] = key
             with open(config_path, "w", encoding="utf-8") as f:
-                json.dump({"abuseipdb_api_key": key}, f, indent=2)
+                json.dump(existing, f, indent=2)
             os.chmod(config_path, 0o600)
             messagebox.showinfo("Save Key", f"API key saved in {config_path}")
         except Exception as e:
