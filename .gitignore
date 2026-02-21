@@ -47,6 +47,11 @@ internet-scanners/
 .idea/
 *.code-workspace
 
+# Runtime lock/state files
+exporting
+naming
+writing
+
 # OS files
 .DS_Store
 Thumbs.db
